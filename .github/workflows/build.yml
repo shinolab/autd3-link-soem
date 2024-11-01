@@ -1,0 +1,52 @@
+name: build
+
+on:
+  push:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test-on-${{ matrix.os }}${{ matrix.arch && '-' }}${{ matrix.arch }}${{ matrix.features && '-' }}${{ matrix.features }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            lint: true
+          - os: ubuntu-latest
+            lint: true
+          - os: macos-latest
+            lint: true
+          - os: ubuntu-latest
+            arch: arm32
+            no-example: true
+            no-test: true
+          - os: ubuntu-latest
+            arch: aarch64
+            no-example: true
+            no-test: true
+          - os: windows-latest
+            arch: aarch64
+            no-test: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: ./.github/actions/setup-build
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+        if: ${{ matrix.no-test != true }}
+      - run: python3 build.py build --arch "${{ matrix.arch }}" --features "${{ matrix.features }}" ${{ matrix.no-example && '--no-example' }}
+      - run: python3 build.py test --features "${{ matrix.features }}"
+        if: ${{ matrix.no-test != true }}
+      - run: python3 build.py lint --features "${{ matrix.features }}" ${{ matrix.no-example && '--no-example' }}
+        if: ${{ matrix.lint == true }}

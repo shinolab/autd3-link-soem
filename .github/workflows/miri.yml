@@ -1,0 +1,33 @@
+name: miri
+
+on: 
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'toolchain channel'
+        required: true
+        default: 'nightly'
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  miri:
+    name: test-with-miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: ./.github/actions/setup-build
+        with:
+          os: ubuntu-latest
+          toolchain: ${{ inputs.channel }}
+          components: miri
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      - run: |
+          python3 build.py test --miri --channel ${{ inputs.channel }}

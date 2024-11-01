@@ -1,0 +1,19 @@
+name: Release
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          feature-group: all-features
+      - run: |
+          cargo publish --no-verify --token ${{ secrets.CRATEIO_TOKEN }}
