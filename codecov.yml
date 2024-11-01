@@ -1,0 +1,18 @@
+codecov:
+  notify:
+    wait_for_ci: false
+  require_ci_to_pass: true
+comment:
+  show_carryforward_flags: false
+coverage:
+  status:
+    changes: false
+    default_rules:
+      flag_coverage_not_uploaded_behavior: include
+    patch:
+      default:
+        target: 100
+        threshold: 0
+    project: true
+github_checks:
+  annotations: true
