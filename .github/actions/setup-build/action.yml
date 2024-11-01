@@ -1,0 +1,42 @@
+name: 'build tools setup action'
+inputs:
+  os:
+    description: 'os'
+    required: true
+    default: ''
+  arch:
+    description: 'arch'
+    required: false
+    default: ''
+  toolchain:
+    description: 'toolchain'
+    required: false
+    default: 'stable'
+  components:
+    description: 'components'
+    required: false
+    default: ''
+runs:
+  using: "composite"
+  steps:
+    - name: setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+
+    - name: setup rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+        target: ${{ (inputs.os == 'windows-latest' && inputs.arch == 'aarch64') && 'aarch64-pc-windows-msvc' || '' }}
+
+    - name: install cross
+      shell: bash
+      if: inputs.os == 'ubuntu-latest' && inputs.arch
+      run: |
+        curl -L https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-x86_64-unknown-linux-gnu.tar.gz > cross.tar.gz
+        tar -xzf cross.tar.gz
+        cp cross /usr/local/bin
+        cp cross-util /usr/local/bin
+        rm cross.tar.gz
