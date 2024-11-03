@@ -25,6 +25,10 @@ async fn main() -> Result<()> {
     ))
     .await?;
 
+    println!("Press Enter to quit.");
+    let mut _s = String::new();
+    std::io::stdin().read_line(&mut _s)?;
+
     autd.close().await?;
 
     Ok(())
