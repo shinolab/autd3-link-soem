@@ -10,24 +10,23 @@ from tools.autd3_build_utils.autd3_build_utils import (
     err,
     fetch_submodule,
     info,
-    rm_glob_f,
+    rremove,
     run_command,
+    substitute_in_file,
     with_env,
     working_dir,
 )
 
 
 class Config(BaseConfig):
-    release: bool
     target: str | None
     no_examples: bool
     channel: str | None
     features: str
 
     def __init__(self, args) -> None:  # noqa: ANN001
-        super().__init__()
+        super().__init__(args)
 
-        self.release = getattr(args, "release", False)
         self.no_examples = getattr(args, "no_examples", False)
         self.channel = getattr(args, "channel", "nightly") or "nightly"
         self.features = getattr(args, "features", "") or ""
@@ -62,28 +61,21 @@ class Config(BaseConfig):
     def cargo_command(self, subcommands: list[str]) -> list[str]:
         command = []
         if self.target is None:
-            command.append("cargo")
-            command.extend(subcommands)
+            command.extend(["cargo", *subcommands])
         else:
             if self.is_linux():
-                command.append("cross")
-                command.extend(subcommands)
+                command.extend(["cross", *subcommands])
             else:
-                command.append("cargo")
-                command.extend(subcommands)
-            command.append("--target")
-            command.append(self.target)
+                command.extend(["cargo", *subcommands])
+            command.extend(["--target", self.target])
         if self.release:
             command.append("--release")
-        features = self.features + " remote"
-        command.append("--features")
-        command.append(features)
+        command.extend(["--features", self.features + " remote"])
         return command
 
 
 def rust_build(args) -> None:  # noqa: ANN001
     config = Config(args)
-
     command = config.cargo_command(["build"])
     if not config.no_examples:
         command.append("--examples")
@@ -92,40 +84,28 @@ def rust_build(args) -> None:  # noqa: ANN001
 
 def rust_lint(args) -> None:  # noqa: ANN001
     config = Config(args)
-
-    command = config.cargo_command(["clippy"])
-    command.append("--tests")
+    command = config.cargo_command(["clippy", "--tests"])
     if not config.no_examples:
         command.append("--examples")
-    command.append("--")
-    command.append("-D")
-    command.append("warnings")
+    command.extend(["--", "-D", "warnings"])
     run_command(command)
 
 
 def rust_test(args) -> None:  # noqa: ANN001
     config = Config(args)
-
     if args.miri:
         with with_env(MIRIFLAGS="-Zmiri-disable-isolation"):
-            command = config.cargo_command([f"+{config.channel}", "miri", "nextest", "run"])
-            run_command(command)
+            run_command(config.cargo_command([f"+{config.channel}", "miri", "nextest", "run"]))
     else:
-        command = config.cargo_command(["nextest", "run"])
-        run_command(command)
+        run_command(config.cargo_command(["nextest", "run"]))
 
 
 def rust_run(args):  # noqa: ANN001, ANN201
-    examples = [
-        "soem",
-        "remote_soem",
-    ]
-
+    examples = ["soem", "remote_soem"]
     if args.target not in examples:
         err(f'example "{args.target}" is not found.')
         info(f"Available examples: {examples}")
         return sys.exit(-1)
-
     features: str
     match args.target:
         case "soem":
@@ -138,12 +118,9 @@ def rust_run(args):  # noqa: ANN001, ANN201
         commands = ["cargo", "run"]
         if args.release:
             commands.append("--release")
-        commands.append("--example")
-        commands.append(args.target)
-        commands.append("--no-default-features")
+        commands.extend(["--example", args.target, "--no-default-features", "--features", features])
         if features is not None:
-            commands.append("--features")
-            commands.append(features)
+            commands.extend(["--features", features])
         run_command(commands)
         return None
 
@@ -154,62 +131,47 @@ def rust_clear(_) -> None:  # noqa: ANN001
 
 def rust_coverage(args) -> None:  # noqa: ANN001
     config = Config(args)
-
     with with_env(
         RUSTFLAGS="-C instrument-coverage",
         LLVM_PROFILE_FILE="%m-%p.profraw",
     ):
-        command = config.cargo_command(["build"])
-
-        run_command(command)
-        command[1] = "test"
-        run_command(command)
-
-        command = [
-            "grcov",
-            ".",
-            "-s",
-            ".",
-            "--binary-path",
-            "./target/debug",
-            "--llvm",
-            "--branch",
-            "--ignore-not-existing",
-            "-o",
-            "./coverage",
-            "-t",
-            args.format,
-            "--excl-line",
-            r"GRCOV_EXCL_LINE|^\s*\.await;?$|#\[derive|#\[error|#\[bitfield_struct|unreachable!|unimplemented!|tracing::(debug|trace|info|warn|error)!\([\s\S]*\);",
-            "--keep-only",
-            "src/**/*.rs",
-            "--excl-start",
-            "GRCOV_EXCL_START",
-            "--excl-stop",
-            "GRCOV_EXCL_STOP",
-        ]
-        run_command(command)
-        rm_glob_f("**/*.profraw")
+        run_command(config.cargo_command(["build"]))
+        run_command(config.cargo_command(["test"]))
+        run_command(
+            [
+                "grcov",
+                ".",
+                "-s",
+                ".",
+                "--binary-path",
+                "./target/debug",
+                "--llvm",
+                "--branch",
+                "--ignore-not-existing",
+                "-o",
+                "./coverage",
+                "-t",
+                args.format,
+                "--excl-line",
+                r"GRCOV_EXCL_LINE|^\s*\.await;?$|#\[derive|#\[error|#\[bitfield_struct|unreachable!|unimplemented!|tracing::(debug|trace|info|warn|error)!\([\s\S]*\);",
+                "--keep-only",
+                "src/**/*.rs",
+                "--excl-start",
+                "GRCOV_EXCL_START",
+                "--excl-stop",
+                "GRCOV_EXCL_STOP",
+            ]
+        )
+        rremove("**/*.profraw")
 
 
 def util_update_ver(args) -> None:  # noqa: ANN001
     version = args.version
-
-    f = Path("Cargo.toml")
-    content = f.read_text()
-    content = re.sub(
-        r'^version = "(.*?)"',
-        f'version = "{version}"',
-        content,
+    substitute_in_file(
+        "Cargo.toml",
+        [(r'^version = "(.*?)"', f'version = "{version}"'), (r'^autd3(.*)version = "(.*?)"', f'autd3\\1version = "{version}"')],
         flags=re.MULTILINE,
     )
-    content = re.sub(
-        r'^autd3(.*)version = "(.*?)"',
-        f'autd3\\1version = "{version}"',
-        content,
-        flags=re.MULTILINE,
-    )
-    f.write_text(content)
 
 
 def util_glob_unsafe(_) -> None:  # noqa: ANN001
@@ -231,9 +193,9 @@ def command_help(args) -> None:  # noqa: ANN001
 
 
 if __name__ == "__main__":
-    fetch_submodule()
-
     with working_dir(Path(__file__).parent):
+        fetch_submodule()
+
         parser = argparse.ArgumentParser(description="autd3 library build script")
         subparsers = parser.add_subparsers()
 
