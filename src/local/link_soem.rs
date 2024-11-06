@@ -207,6 +207,8 @@ impl SOEM {
                     }
 
                     if start.elapsed() > sync_timeout {
+                        sync_done.store(true, Ordering::Release);
+                        let _ = th.join();
                         return Err(SOEMError::SynchronizeFailed(max_diff, sync_tolerance).into());
                     }
                     tokio::time::sleep_until(now + Duration::from_millis(10)).await;
