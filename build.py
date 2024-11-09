@@ -137,6 +137,16 @@ def rust_coverage(args) -> None:  # noqa: ANN001
     ):
         run_command(config.cargo_command(["build"]))
         run_command(config.cargo_command(["test"]))
+        exclude_patterns = [
+            "GRCOV_EXCL_LINE",
+            r"^\s*\.await\??[,;]?$",
+            r"#\[derive",
+            r"#\[error",
+            r"#\[bitfield_struct",
+            r"unreachable!",
+            r"unimplemented!",
+            r"tracing::(debug|trace|info|warn|error)!\([\s\S]*\);",
+        ]
         run_command(
             [
                 "grcov",
@@ -153,7 +163,7 @@ def rust_coverage(args) -> None:  # noqa: ANN001
                 "-t",
                 args.format,
                 "--excl-line",
-                r"GRCOV_EXCL_LINE|^\s*\.await;?$|#\[derive|#\[error|#\[bitfield_struct|unreachable!|unimplemented!|tracing::(debug|trace|info|warn|error)!\([\s\S]*\);",
+                "|".join(exclude_patterns),
                 "--keep-only",
                 "src/**/*.rs",
                 "--excl-start",
