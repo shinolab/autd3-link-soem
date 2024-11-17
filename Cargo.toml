@@ -46,3 +46,7 @@ anyhow = "1.0.79"
 autd3 = { version = "29.0.0-rc.8" }
 tokio = { version = "1.35.1", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = "0.3.18"
+
+[[example]]
+name = "remote_soem"
+required-features = ["remote"]
