@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   test:
-    name: test-on-${{ matrix.os }}${{ matrix.arch && '-' }}${{ matrix.arch }}${{ matrix.features && '-' }}${{ matrix.features }}
+    name: test-on-${{ matrix.os }}${{ matrix.arch && '-' }}${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -45,8 +45,8 @@ jobs:
         with:
           tool: nextest
         if: ${{ matrix.no-test != true }}
-      - run: python3 build.py build --arch "${{ matrix.arch }}" --features "${{ matrix.features }}" ${{ matrix.no-example && '--no-example' }}
-      - run: python3 build.py test --features "${{ matrix.features }}"
+      - run: python3 build.py build --arch "${{ matrix.arch }}" ${{ matrix.no-example && '--no-example' }}
+      - run: python3 build.py test
         if: ${{ matrix.no-test != true }}
-      - run: python3 build.py lint --features "${{ matrix.features }}" ${{ matrix.no-example && '--no-example' }}
+      - run: python3 build.py lint ${{ matrix.no-example && '--no-example' }}
         if: ${{ matrix.lint == true }}
