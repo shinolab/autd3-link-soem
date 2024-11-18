@@ -10,28 +10,28 @@ edition = "2021"
 repository = "https://github.com/shinolab/autd3-link-soem"
 
 [build-dependencies]
-cc = { version = "1.0.73", features = ["parallel"], optional = true }
+cc = { version = "1.2.1", optional = true }
 glob = { version = "0.3.0", optional = true }
-anyhow = { version = "1.0.79", optional = true }
+anyhow = { version = "1.0.79", optional = true, default-features = false }
 
 [dependencies]
-serde = { version = "1.0.188", features = ["derive"], optional = true }
-autd3-driver = { version = "29.0.0-rc.8" }
+serde = { version = "1.0.215", optional = true, default-features = false }
+autd3-driver = { version = "29.0.0-rc.8", default-features = false }
 autd3-protobuf = { version = "29.0.0-rc.8", optional = true }
-thiserror = { version = "2.0.0", optional = true }
-time = { version = "0.3.23", features = ["std"], optional = true }
-tonic = { version = "0.12.1", optional = true }
-tokio = { version = "1.35.1", features = ["time"] }
-async-channel = { version = "2.3.1", optional = true }
-thread-priority = { version = "1.1.0", optional = true }
-derive_more = { version = "1.0.0" }
-tracing = { version = "0.1.40" }
+thiserror = { version = "2.0.3", optional = true, default-features = false }
+time = { version = "0.3.23", optional = true, default-features = false }
+tonic = { version = "0.12.1", optional = true, default-features = false }
+tokio = "1.41.1"
+async-channel = { version = "2.3.1", optional = true, default-features = false }
+thread-priority = { version = "1.2.0", optional = true }
+derive_more = { version = "1.0.0", default-features = false }
+tracing = { version = "0.1.40", default-features = false }
 ta = { version = "0.5.0", optional = true }
 spin_sleep = { version = "1.2.1", optional = true }
-zerocopy = { version = "0.8.7" }
+zerocopy = { version = "0.8.10" }
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.58.0", features = ["Win32_Media_Multimedia", "Win32_System_Threading", "Win32_Foundation"], optional = true }
+windows = { version = "0.58.0", optional = true, default-features = false }
 
 [features]
 local = ["ta", "cc", "glob", "anyhow", "async-channel", "time", "thiserror", "windows", "thread-priority", "spin_sleep"]
@@ -42,10 +42,10 @@ serde = ["dep:serde"]
 async-trait = ["autd3-driver/async-trait", "autd3-protobuf/async-trait"]
 
 [dev-dependencies]
-anyhow = "1.0.79"
+anyhow = { version = "1.0.79", default-features = false }
 autd3 = { version = "29.0.0-rc.8" }
-tokio = { version = "1.35.1", features = ["rt-multi-thread", "macros"] }
-tracing-subscriber = "0.3.18"
+tokio = { version = "1.35.1", features = ["macros"] }
+tracing-subscriber = { version = "0.3.18", features = ["fmt"], default-features = false }
 
 [[example]]
 name = "remote_soem"
