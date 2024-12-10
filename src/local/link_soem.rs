@@ -139,25 +139,27 @@ impl SOEM {
             }
 
             tracing::info!("Waiting for synchronization.");
-            let sync_done = Arc::new(AtomicBool::new(false));
-            let th = std::thread::spawn({
-                let sync_done = sync_done.clone();
-                move || {
-                    let mut data = 0u64;
-                    while !sync_done.load(Ordering::Acquire) {
-                        ec_FRMW(
-                            ec_slave[1].configadr,
-                            ECT_REG_DCSYSTIME as _,
-                            std::mem::size_of::<u64>() as _,
-                            &mut data as *mut _ as *mut _,
-                            EC_TIMEOUTRET as _,
-                        );
-                        std::thread::sleep(Duration::from_millis(1));
+            let (tx, mut rx) = tokio::sync::oneshot::channel();
+            let th = std::thread::spawn(move || {
+                let mut data = 0u64;
+                loop {
+                    if rx.try_recv().is_ok() {
+                        break;
                     }
+                    ec_FRMW(
+                        ec_slave[1].configadr,
+                        ECT_REG_DCSYSTIME as _,
+                        std::mem::size_of::<u64>() as _,
+                        &mut data as *mut _ as *mut _,
+                        EC_TIMEOUTRET as _,
+                    );
+                    std::thread::sleep(Duration::from_millis(1));
                 }
             });
             tokio::time::sleep(Duration::from_millis(100)).await;
-            if wc > 1 {
+            let max_diff = if wc == 1 {
+                Duration::ZERO
+            } else {
                 let mut last_diff = (0..wc as usize - 1)
                     .map(|_| sync_tolerance.as_nanos() as u32)
                     .collect::<Vec<_>>();
@@ -198,24 +200,22 @@ impl SOEM {
                             acc.max(diff)
                         });
                     tracing::debug!("Maximum system time difference is {:?}.", max_diff);
-                    if max_diff < sync_tolerance {
-                        tracing::info!(
-                            "All devices are synchronized. Maximum system time difference is {:?}.",
-                            max_diff
-                        );
-                        break;
-                    }
-
-                    if start.elapsed() > sync_timeout {
-                        sync_done.store(true, Ordering::Release);
-                        let _ = th.join();
-                        return Err(SOEMError::SynchronizeFailed(max_diff, sync_tolerance).into());
+                    if max_diff < sync_tolerance || start.elapsed() > sync_timeout {
+                        break max_diff;
                     }
                     tokio::time::sleep_until(now + Duration::from_millis(10)).await;
                 }
-            }
-            sync_done.store(true, Ordering::Release);
+            };
+            let _ = tx.send(());
             let _ = th.join();
+            if max_diff < sync_tolerance {
+                tracing::info!(
+                    "All devices are synchronized. Maximum system time difference is {:?}.",
+                    max_diff
+                );
+            } else {
+                return Err(SOEMError::SynchronizeFailed(max_diff, sync_tolerance).into());
+            }
 
             let mut result = Self {
                 sender: tx_sender,
