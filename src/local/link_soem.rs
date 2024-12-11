@@ -37,7 +37,7 @@ use super::{
 pub struct SOEM {
     sender: Sender<Vec<TxMessage>>,
     is_open: Arc<AtomicBool>,
-    ec_send_cycle: Duration,
+    send_cycle: Duration,
     io_map: Arc<Mutex<IOMap>>,
     init_guard: Option<SOEMInitGuard>,
     config_dc_guard: Option<SOEMDCConfigGuard>,
@@ -89,17 +89,12 @@ impl SOEM {
                 sync_timeout,
             } = builder;
 
-            // ceilling to multiple of EC_CYCLE_TIME_BASE
-            let ec_sync0_cycle =
-                ((sync0_cycle.max(Duration::from_nanos(1)) - Duration::from_nanos(1)).as_nanos()
-                    / EC_CYCLE_TIME_BASE.as_nanos()
-                    + 1) as u32
-                    * EC_CYCLE_TIME_BASE;
-            let ec_send_cycle =
-                ((send_cycle.max(Duration::from_nanos(1)) - Duration::from_nanos(1)).as_nanos()
-                    / EC_CYCLE_TIME_BASE.as_nanos()
-                    + 1) as u32
-                    * EC_CYCLE_TIME_BASE;
+            if sync0_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0 {
+                return Err(SOEMError::InvalidCycle(sync0_cycle).into());
+            }
+            if send_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0 {
+                return Err(SOEMError::InvalidCycle(send_cycle).into());
+            }
 
             let ifname = if ifname.is_empty() {
                 tracing::info!("No interface name is specified. Looking up AUTD device.");
@@ -131,10 +126,10 @@ impl SOEM {
             let (tx_sender, tx_receiver) = bounded(buf_size.get());
             let is_open = Arc::new(AtomicBool::new(true));
             let io_map = Arc::new(Mutex::new(IOMap::new(num_devices)));
-            let config_dc_guard = SOEMDCConfigGuard::new(ec_sync0_cycle);
+            let config_dc_guard = SOEMDCConfigGuard::new(sync0_cycle);
 
             if sync_mode == SyncMode::DC {
-                tracing::info!("Configuring Sync0 with cycle time {:?}.", ec_sync0_cycle);
+                tracing::info!("Configuring Sync0 with cycle time {:?}.", sync0_cycle);
                 config_dc_guard.set_dc_config();
             }
 
@@ -220,7 +215,7 @@ impl SOEM {
             let mut result = Self {
                 sender: tx_sender,
                 is_open,
-                ec_send_cycle,
+                send_cycle,
                 io_map,
                 init_guard: Some(init_guard),
                 config_dc_guard: Some(config_dc_guard),
@@ -243,10 +238,7 @@ impl SOEM {
             tracing::info!("All devices are in operational state.");
 
             let wkc = Arc::new(AtomicI32::new(0));
-            tracing::info!(
-                "Starting EtherCAT thread with cycle time {:?}.",
-                ec_send_cycle
-            );
+            tracing::info!("Starting EtherCAT thread with cycle time {:?}.", send_cycle);
             result.ecat_th_guard = Some(SOEMECatThreadGuard::new(
                 result.is_open.clone(),
                 wkc.clone(),
@@ -256,7 +248,7 @@ impl SOEM {
                 thread_priority,
                 #[cfg(target_os = "windows")]
                 process_priority,
-                ec_send_cycle,
+                send_cycle,
             )?);
 
             if !OpStateGuard::is_op_state() {
@@ -264,7 +256,7 @@ impl SOEM {
             }
 
             if sync_mode == SyncMode::FreeRun {
-                tracing::info!("Configuring Sync0 with cycle time {:?}.", ec_sync0_cycle);
+                tracing::info!("Configuring Sync0 with cycle time {:?}.", sync0_cycle);
                 result.config_dc_guard.as_mut().unwrap().dc_config();
             }
 
@@ -340,7 +332,7 @@ impl Link for SOEM {
         self.is_open.store(false, Ordering::Release);
 
         while !self.sender.is_empty() {
-            tokio::time::sleep(self.ec_send_cycle).await;
+            tokio::time::sleep(self.send_cycle).await;
         }
 
         let _ = self.ecat_th_guard.take();
