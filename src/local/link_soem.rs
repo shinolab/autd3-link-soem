@@ -112,7 +112,7 @@ impl SOEM {
 
             let wc = ec_config_init(0);
             tracing::info!("Found {} slaves.", wc);
-            if wc <= 0 || (geometry.num_devices() != 0 && wc as usize != geometry.num_devices()) {
+            if wc <= 0 || (geometry.len() != 0 && wc as usize != geometry.len()) {
                 return Err(SOEMError::SlaveNotFound(wc as _, geometry.len() as _).into());
             }
             (1..=wc).try_for_each(|i| {
