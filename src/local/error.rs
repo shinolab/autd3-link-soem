@@ -8,6 +8,8 @@ use super::state::EcStatus;
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum SOEMError {
+    #[error("Cycle({0:?}) must be multiple of 500μs")]
+    InvalidCycle(Duration),
     #[error("No AUTD device was found")]
     NoDeviceFound,
     #[error("No socket connection on {0}")]
