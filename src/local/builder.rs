@@ -8,9 +8,11 @@ use super::{
 
 use autd3_driver::{derive::*, ethercat::EC_CYCLE_TIME_BASE, link::LinkBuilder};
 
+use derive_more::Debug;
+
 use thread_priority::ThreadPriority;
 
-#[derive(Builder)]
+#[derive(Builder, Debug)]
 pub struct SOEMBuilder {
     #[get]
     #[set]
@@ -40,6 +42,7 @@ pub struct SOEMBuilder {
     #[get]
     #[set]
     pub(crate) process_priority: super::ProcessPriority,
+    #[debug(skip)]
     pub(crate) err_handler: Option<ErrHandler>,
     #[get]
     #[set]
