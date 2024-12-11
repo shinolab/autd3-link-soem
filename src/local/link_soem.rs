@@ -72,6 +72,8 @@ impl SOEM {
         builder: SOEMBuilder,
         geometry: &autd3_driver::geometry::Geometry,
     ) -> Result<Self, AUTDInternalError> {
+        tracing::debug!("Opening SOEM link: {:?}", builder);
+
         unsafe {
             let SOEMBuilder {
                 buf_size,
