@@ -8,7 +8,7 @@ use super::state::EcStatus;
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum SOEMError {
-    #[error("Cycle({0:?}) must be multiple of 500μs")]
+    #[error("Cycle({0:?}) must be a multiple of 500μs and not 0")]
     InvalidCycle(Duration),
     #[error("No AUTD device was found")]
     NoDeviceFound,

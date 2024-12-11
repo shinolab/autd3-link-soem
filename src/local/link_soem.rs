@@ -91,10 +91,11 @@ impl SOEM {
                 sync_timeout,
             } = builder;
 
-            if sync0_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0 {
+            if sync0_cycle.is_zero() || sync0_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0
+            {
                 return Err(SOEMError::InvalidCycle(sync0_cycle).into());
             }
-            if send_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0 {
+            if send_cycle.is_zero() || send_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0 {
                 return Err(SOEMError::InvalidCycle(send_cycle).into());
             }
 
