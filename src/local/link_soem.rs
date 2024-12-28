@@ -17,7 +17,7 @@ use tracing::instrument;
 pub use crate::local::builder::SOEMBuilder;
 
 use autd3_driver::{
-    error::AUTDInternalError,
+    error::AUTDDriverError,
     ethercat::{SyncMode, EC_CYCLE_TIME_BASE},
     firmware::cpu::{RxMessage, TxMessage},
     link::Link,
@@ -71,7 +71,7 @@ impl SOEM {
     pub(crate) async fn open(
         builder: SOEMBuilder,
         geometry: &autd3_driver::geometry::Geometry,
-    ) -> Result<Self, AUTDInternalError> {
+    ) -> Result<Self, AUTDDriverError> {
         tracing::debug!("Opening SOEM link: {:?}", builder);
 
         unsafe {
@@ -328,7 +328,7 @@ impl SOEM {
 
 #[cfg_attr(feature = "async-trait", autd3_driver::async_trait)]
 impl Link for SOEM {
-    async fn close(&mut self) -> Result<(), AUTDInternalError> {
+    async fn close(&mut self) -> Result<(), AUTDDriverError> {
         if !self.is_open() {
             return Ok(());
         }
@@ -347,17 +347,17 @@ impl Link for SOEM {
         Ok(())
     }
 
-    async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, AUTDInternalError> {
+    async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, AUTDDriverError> {
         match self.sender.send(tx.to_vec()).await {
-            Err(SendError(..)) => Err(AUTDInternalError::LinkClosed),
+            Err(SendError(..)) => Err(AUTDDriverError::LinkClosed),
             _ => Ok(true),
         }
     }
 
-    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, AUTDInternalError> {
+    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, AUTDDriverError> {
         match self.io_map.lock() {
             Ok(io_map) => rx.copy_from_slice(io_map.input()),
-            Err(_) => return Err(AUTDInternalError::LinkClosed),
+            Err(_) => return Err(AUTDDriverError::LinkClosed),
         }
         Ok(true)
     }
@@ -517,7 +517,7 @@ impl SOEMECatThreadGuard {
         thread_priority: ThreadPriority,
         #[cfg(target_os = "windows")] process_priority: super::ProcessPriority,
         ec_send_cycle: Duration,
-    ) -> Result<Self, AUTDInternalError> {
+    ) -> Result<Self, AUTDDriverError> {
         Ok(Self {
             ecatth_handle: match timer_strategy {
                 TimerStrategy::SpinSleep => Some(std::thread::spawn(move || {

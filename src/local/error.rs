@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use autd3_driver::error::AUTDInternalError;
+use autd3_driver::error::AUTDDriverError;
 use thiserror::Error;
 
 use super::state::EcStatus;
@@ -31,8 +31,8 @@ pub enum SOEMError {
     ThreadPriorityError(#[from] thread_priority::Error),
 }
 
-impl From<SOEMError> for AUTDInternalError {
-    fn from(val: SOEMError) -> AUTDInternalError {
-        AUTDInternalError::LinkError(val.to_string())
+impl From<SOEMError> for AUTDDriverError {
+    fn from(val: SOEMError) -> AUTDDriverError {
+        AUTDDriverError::LinkError(val.to_string())
     }
 }

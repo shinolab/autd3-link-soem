@@ -95,7 +95,7 @@ impl LinkBuilder for SOEMBuilder {
     async fn open(
         self,
         geometry: &autd3_driver::geometry::Geometry,
-    ) -> Result<Self::L, AUTDInternalError> {
+    ) -> Result<Self::L, AUTDDriverError> {
         Self::L::open(self, geometry).await
     }
 }
