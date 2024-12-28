@@ -9,7 +9,7 @@ async fn main() -> Result<()> {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let mut autd = Controller::builder([AUTD3::new(Vector3::zeros())])
+    let mut autd = Controller::builder([AUTD3::new(Point3::origin())])
         .open(SOEM::builder().with_err_handler(|slave, status| {
             eprintln!("slave[{}]: {}", slave, status);
             if status == Status::Lost {

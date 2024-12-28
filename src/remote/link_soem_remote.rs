@@ -26,12 +26,16 @@ impl LinkBuilder for RemoteSOEMBuilder {
     async fn open(
         self,
         _geometry: &autd3_driver::geometry::Geometry,
-    ) -> Result<Self::L, AUTDInternalError> {
+    ) -> Result<Self::L, AUTDDriverError> {
         tracing::info!("Connecting to remote SOEM server@{}", self.addr);
+
+        let conn = tonic::transport::Endpoint::new(format!("http://{}", self.addr))
+            .map_err(AUTDProtoBufError::from)?
+            .connect()
+            .await
+            .map_err(AUTDProtoBufError::from)?;
         Ok(Self::L {
-            client: ecat_client::EcatClient::connect(format!("http://{}", self.addr))
-                .await
-                .map_err(AUTDProtoBufError::from)?,
+            client: ecat_client::EcatClient::new(conn),
             is_open: true,
         })
     }
@@ -45,7 +49,7 @@ impl RemoteSOEM {
 
 #[cfg_attr(feature = "async-trait", autd3_driver::async_trait)]
 impl Link for RemoteSOEM {
-    async fn close(&mut self) -> Result<(), AUTDInternalError> {
+    async fn close(&mut self) -> Result<(), AUTDDriverError> {
         self.is_open = false;
         self.client
             .close(CloseRequest {})
@@ -54,7 +58,7 @@ impl Link for RemoteSOEM {
         Ok(())
     }
 
-    async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, AUTDInternalError> {
+    async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, AUTDDriverError> {
         Ok(self
             .client
             .send_data(tx.to_msg(None))
@@ -64,7 +68,7 @@ impl Link for RemoteSOEM {
             .success)
     }
 
-    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, AUTDInternalError> {
+    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, AUTDDriverError> {
         let rx_ = Vec::<RxMessage>::from_msg(
             &self
                 .client

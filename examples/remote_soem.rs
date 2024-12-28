@@ -9,7 +9,7 @@ async fn main() -> Result<()> {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let mut autd = Controller::builder([AUTD3::new(Vector3::zeros())])
+    let mut autd = Controller::builder([AUTD3::new(Point3::origin())])
         .open(RemoteSOEM::builder("127.0.0.1:8080".parse()?))
         .await?;
 
