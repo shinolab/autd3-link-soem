@@ -87,7 +87,7 @@ def rust_lint(args) -> None:  # noqa: ANN001
     command = config.cargo_command(["clippy", "--tests"])
     if not config.no_examples:
         command.append("--examples")
-    command.extend(["--", "-D", "warnings"])
+    command.extend(["--", "-D", "warnings", "-W", "clippy::all"])
     run_command(command)
 
 
