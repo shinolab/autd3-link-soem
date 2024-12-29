@@ -50,3 +50,19 @@ jobs:
         if: ${{ matrix.no-test != true }}
       - run: python3 build.py lint ${{ matrix.no-example && '--no-example' }}
         if: ${{ matrix.lint == true }}
+
+  build-docs:
+    name: build-docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: ./.github/actions/setup-build
+        with:
+          os: ubuntu-latest
+          toolchain: nightly
+      - run: python3 build.py doc
+      - uses: dtolnay/install@cargo-docs-rs
+      - run: | 
+          cargo +nightly docs-rs
