@@ -14,6 +14,7 @@ pub struct EthernetAdapter {
     name: String,
 }
 
+/// A list of Ethernet adapters.
 #[derive(Clone, Deref, IntoIterator)]
 pub struct EthernetAdapters {
     #[deref]
@@ -22,6 +23,7 @@ pub struct EthernetAdapters {
 }
 
 impl EthernetAdapters {
+    /// Create a new [`EthernetAdapters`].
     pub fn new() -> Self {
         let mut adapters = Vec::new();
         unsafe /* ignore miri */ {

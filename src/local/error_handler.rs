@@ -13,11 +13,15 @@ use derive_more::Display;
 
 #[derive(Debug, Clone, PartialEq, Display)]
 #[repr(u8)]
+/// The status of the EtherCAT slave.
 pub enum Status {
+    /// The slave is in SAFE_OP + ERROR.
     #[display("slave is in SAFE_OP + ERROR, attempting ack")]
     Error = 0,
+    /// The slave is lost.
     #[display("slave is lost")]
     Lost = 1,
+    /// The slave is in SAFE_OP.
     #[display("slave is in SAFE_OP, change to OPERATIONAL")]
     StateChanged = 2,
 }
