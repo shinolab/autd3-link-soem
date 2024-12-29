@@ -34,6 +34,9 @@ use super::{
     TimerStrategy,
 };
 
+/// A [`Link`] using [SOEM].
+///
+/// [SOEM]: https://github.com/OpenEtherCATsociety/SOEM
 pub struct SOEM {
     sender: Sender<Vec<TxMessage>>,
     is_open: Arc<AtomicBool>,
@@ -47,14 +50,17 @@ pub struct SOEM {
 }
 
 impl SOEM {
+    /// Creates a new [`SOEMBuilder`].
     pub fn builder() -> SOEMBuilder {
         SOEMBuilder::new()
     }
 
+    #[doc(hidden)]
     pub fn num_devices() -> usize {
         unsafe { ec_slavecount as usize }
     }
 
+    #[doc(hidden)]
     pub async fn clear_iomap(
         &mut self,
     ) -> Result<(), std::sync::PoisonError<std::sync::MutexGuard<'_, IOMap>>> {

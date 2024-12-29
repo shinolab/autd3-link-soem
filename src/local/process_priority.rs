@@ -1,5 +1,7 @@
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
+/// The process priority. See [`ProcessPriorityClass`](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.processpriorityclass?view=net-8.0#system-diagnostics-processpriorityclass-idle) for more information.
 pub enum ProcessPriority {
     Idle = 0,
     BelowNormal = 1,
