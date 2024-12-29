@@ -8,12 +8,19 @@ use autd3_driver::{
 
 use autd3_protobuf::*;
 
+/// A [`Link`] using [SOEM] on a remote server.
+///
+/// To use this link, you need to run [`TwinCATAUTDServer`] on the remote server before.
+///
+/// [SOEM]: https://github.com/OpenEtherCATsociety/SOEM
+/// [`TwinCATAUTDServer`]: https://github.com/shinolab/autd3-server
 pub struct RemoteSOEM {
     client: ecat_client::EcatClient<tonic::transport::Channel>,
     is_open: bool,
 }
 
-#[derive(Builder, Debug)]
+/// A builder for [`RemoteSOEM`].
+#[derive(Debug)]
 pub struct RemoteSOEMBuilder {
     addr: SocketAddr,
 }
@@ -42,6 +49,7 @@ impl LinkBuilder for RemoteSOEMBuilder {
 }
 
 impl RemoteSOEM {
+    /// Create a new [`RemoteSOEM`] builder.
     pub const fn builder(addr: SocketAddr) -> RemoteSOEMBuilder {
         RemoteSOEMBuilder { addr }
     }

@@ -1,3 +1,3 @@
-pub mod link_soem_remote;
+mod link_soem_remote;
 
-pub use link_soem_remote::RemoteSOEM;
+pub use link_soem_remote::{RemoteSOEM, RemoteSOEMBuilder};
