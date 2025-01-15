@@ -70,7 +70,7 @@ class Config(BaseConfig):
             command.extend(["--target", self.target])
         if self.release:
             command.append("--release")
-        command.extend(["--features", self.features + " remote"])
+        command.extend(["--features", self.features + " remote blocking"])
         return command
 
 
@@ -144,7 +144,6 @@ def rust_coverage(args) -> None:  # noqa: ANN001
         run_command(config.cargo_command(["test"]))
         exclude_patterns = [
             "GRCOV_EXCL_LINE",
-            r"^\s*\.await\??[,;]?$",
             r"#\[derive",
             r"#\[error",
             r"#\[bitfield_struct",

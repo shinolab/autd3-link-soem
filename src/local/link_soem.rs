@@ -8,19 +8,19 @@ use std::{
     time::Duration,
 };
 
-use async_channel::{bounded, Receiver, SendError, Sender};
+use crossbeam_channel::{bounded, Receiver, Sender};
 use ta::{indicators::ExponentialMovingAverage, Next};
 use thread_priority::ThreadPriority;
 use time::ext::NumericalDuration;
 use tracing::instrument;
 
 pub use crate::local::builder::SOEMBuilder;
+use crate::local::sync_mode::SyncMode;
 
-use autd3_driver::{
-    error::AUTDDriverError,
-    ethercat::{SyncMode, EC_CYCLE_TIME_BASE},
-    firmware::cpu::{RxMessage, TxMessage},
-    link::Link,
+use autd3_core::{
+    ethercat::EC_CYCLE_TIME_BASE,
+    geometry::Geometry,
+    link::{Link, LinkError, RxMessage, TxMessage},
 };
 
 use super::{
@@ -61,11 +61,11 @@ impl SOEM {
     }
 
     #[doc(hidden)]
-    pub async fn clear_iomap(
+    pub fn clear_iomap(
         &mut self,
     ) -> Result<(), std::sync::PoisonError<std::sync::MutexGuard<'_, IOMap>>> {
         while !self.sender.is_empty() {
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            std::thread::sleep(Duration::from_millis(100));
         }
         self.io_map.lock()?.clear();
         Ok(())
@@ -74,10 +74,7 @@ impl SOEM {
 
 impl SOEM {
     #[instrument(level = "debug", skip(builder, geometry))]
-    pub(crate) async fn open(
-        builder: SOEMBuilder,
-        geometry: &autd3_driver::geometry::Geometry,
-    ) -> Result<Self, AUTDDriverError> {
+    pub(crate) fn open(builder: SOEMBuilder, geometry: &Geometry) -> Result<Self, LinkError> {
         tracing::debug!("Opening SOEM link: {:?}", builder);
 
         unsafe {
@@ -143,7 +140,7 @@ impl SOEM {
             }
 
             tracing::info!("Waiting for synchronization.");
-            let (tx, mut rx) = tokio::sync::oneshot::channel();
+            let (tx, rx) = bounded(1);
             let th = std::thread::spawn(move || {
                 let mut data = 0u64;
                 loop {
@@ -160,7 +157,7 @@ impl SOEM {
                     std::thread::sleep(Duration::from_millis(1));
                 }
             });
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            std::thread::sleep(Duration::from_millis(100));
             let max_diff = if wc == 1 {
                 Duration::ZERO
             } else {
@@ -171,7 +168,6 @@ impl SOEM {
                     vec![ExponentialMovingAverage::new(9).unwrap(); (wc - 1) as usize];
                 let start = std::time::Instant::now();
                 loop {
-                    let now = tokio::time::Instant::now();
                     let max_diff = (2..=wc)
                         .zip(last_diff.iter_mut())
                         .zip(diff_averages.iter_mut())
@@ -207,7 +203,7 @@ impl SOEM {
                     if max_diff < sync_tolerance || start.elapsed() > sync_timeout {
                         break max_diff;
                     }
-                    tokio::time::sleep_until(now + Duration::from_millis(10)).await;
+                    std::thread::sleep(Duration::from_millis(10));
                 }
             };
             let _ = tx.send(());
@@ -258,7 +254,7 @@ impl SOEM {
                 #[cfg(target_os = "windows")]
                 process_priority,
                 send_cycle,
-            )?);
+            ));
 
             if !OpStateGuard::is_op_state() {
                 return Err(SOEMError::NotResponding(EcStatus::new(num_devices)).into());
@@ -332,16 +328,15 @@ impl SOEM {
     }
 }
 
-#[cfg_attr(feature = "async-trait", autd3_driver::async_trait)]
 impl Link for SOEM {
-    async fn close(&mut self) -> Result<(), AUTDDriverError> {
-        if !self.is_open() {
+    fn close(&mut self) -> Result<(), LinkError> {
+        if !self.is_open.load(Ordering::Acquire) {
             return Ok(());
         }
         self.is_open.store(false, Ordering::Release);
 
         while !self.sender.is_empty() {
-            tokio::time::sleep(self.send_cycle).await;
+            std::thread::sleep(self.send_cycle);
         }
 
         let _ = self.ecat_th_guard.take();
@@ -353,18 +348,19 @@ impl Link for SOEM {
         Ok(())
     }
 
-    async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, AUTDDriverError> {
-        match self.sender.send(tx.to_vec()).await {
-            Err(SendError(..)) => Err(AUTDDriverError::LinkClosed),
-            _ => Ok(true),
-        }
+    fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
+        self.sender
+            .send(tx.to_vec())
+            .map_err(|_| LinkError::new("Link is closed.".to_owned()))?;
+        Ok(true)
     }
 
-    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, AUTDDriverError> {
-        match self.io_map.lock() {
-            Ok(io_map) => rx.copy_from_slice(io_map.input()),
-            Err(_) => return Err(AUTDDriverError::LinkClosed),
-        }
+    fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
+        let io_map = self
+            .io_map
+            .lock()
+            .map_err(|_| LinkError::new("Link is closed.".to_owned()))?;
+        rx.copy_from_slice(io_map.input());
         Ok(true)
     }
 
@@ -523,8 +519,8 @@ impl SOEMECatThreadGuard {
         thread_priority: ThreadPriority,
         #[cfg(target_os = "windows")] process_priority: super::ProcessPriority,
         ec_send_cycle: Duration,
-    ) -> Result<Self, AUTDDriverError> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             ecatth_handle: match timer_strategy {
                 TimerStrategy::SpinSleep => Some(std::thread::spawn(move || {
                     Self::ecat_run::<SpinSleep>(
@@ -563,7 +559,7 @@ impl SOEMECatThreadGuard {
                     )
                 })),
             },
-        })
+        }
     }
 
     fn ecat_run<S: Sleep>(
@@ -581,10 +577,16 @@ impl SOEMECatThreadGuard {
                 let old_priority = windows::Win32::System::Threading::GetPriorityClass(
                     windows::Win32::System::Threading::GetCurrentProcess(),
                 );
-                windows::Win32::System::Threading::SetPriorityClass(
+                if let Err(e) = windows::Win32::System::Threading::SetPriorityClass(
                     windows::Win32::System::Threading::GetCurrentProcess(),
                     process_priority.into(),
-                )?;
+                ) {
+                    tracing::warn!(
+                        "Failed to set process priority to {:?}: {:?}.",
+                        process_priority,
+                        e
+                    );
+                }
                 old_priority
             };
             thread_priority.set_for_current()?;
@@ -639,10 +641,16 @@ impl SOEMECatThreadGuard {
 
             #[cfg(target_os = "windows")]
             {
-                windows::Win32::System::Threading::SetPriorityClass(
+                if let Err(e) = windows::Win32::System::Threading::SetPriorityClass(
                     windows::Win32::System::Threading::GetCurrentProcess(),
                     windows::Win32::System::Threading::PROCESS_CREATION_FLAGS(old_priority),
-                )?;
+                ) {
+                    tracing::warn!(
+                        "Failed to restore process priority to {:?}: {:?}.",
+                        old_priority,
+                        e
+                    );
+                }
             }
         }
         Ok(())
@@ -697,5 +705,29 @@ impl Drop for SOEMEcatCheckThreadGuard {
         if let Some(th) = self.ecat_check_th.take() {
             let _ = th.join();
         }
+    }
+}
+
+#[cfg(feature = "async")]
+use autd3_core::link::AsyncLink;
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[cfg_attr(feature = "async-trait", autd3_core::async_trait)]
+impl AsyncLink for SOEM {
+    async fn close(&mut self) -> Result<(), LinkError> {
+        <Self as Link>::close(self)
+    }
+
+    async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
+        <Self as Link>::send(self, tx)
+    }
+
+    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
+        <Self as Link>::receive(self, rx)
+    }
+
+    fn is_open(&self) -> bool {
+        <Self as Link>::is_open(self)
     }
 }
