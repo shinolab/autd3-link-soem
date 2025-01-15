@@ -1,6 +1,6 @@
-use autd3_driver::{
+use autd3_core::{
     ethercat::{EC_INPUT_FRAME_SIZE, EC_OUTPUT_FRAME_SIZE},
-    firmware::cpu::{RxMessage, TxMessage},
+    link::{RxMessage, TxMessage},
 };
 
 use derive_more::Deref;

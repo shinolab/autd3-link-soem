@@ -8,13 +8,14 @@ mod process_priority;
 mod sleep;
 mod soem_bindings;
 mod state;
+mod sync_mode;
 mod timer_strategy;
 
-pub use autd3_driver::ethercat::SyncMode;
 pub use builder::SOEMBuilder;
 pub use error_handler::Status;
 pub use ethernet_adapters::EthernetAdapters;
 pub use link_soem::SOEM;
 pub use process_priority::ProcessPriority;
+pub use sync_mode::SyncMode;
 pub use thread_priority::{ThreadPriority, ThreadPriorityValue};
 pub use timer_strategy::TimerStrategy;

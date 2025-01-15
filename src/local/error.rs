@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use autd3_driver::error::AUTDDriverError;
+use autd3_core::link::LinkError;
 use thiserror::Error;
 
 use super::state::EcStatus;
@@ -24,15 +24,12 @@ pub enum SOEMError {
     InvalidInterfaceName(String),
     #[error("Failed to synchronize devices. Maximum system time difference ({0:?}) exceeded the tolerance ({1:?})")]
     SynchronizeFailed(Duration, Duration),
-    #[cfg(target_os = "windows")]
-    #[error("{0}")]
-    WindowsError(#[from] windows::core::Error),
     #[error("{0}")]
     ThreadPriorityError(#[from] thread_priority::Error),
 }
 
-impl From<SOEMError> for AUTDDriverError {
-    fn from(val: SOEMError) -> AUTDDriverError {
-        AUTDDriverError::LinkError(val.to_string())
+impl From<SOEMError> for LinkError {
+    fn from(val: SOEMError) -> LinkError {
+        LinkError::new(val.to_string())
     }
 }

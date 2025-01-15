@@ -2,7 +2,7 @@ use crate::local::soem_bindings;
 
 use std::ffi::CStr;
 
-use autd3_driver::derive::Builder;
+use autd3_derive::Builder;
 use derive_more::{Deref, Display, IntoIterator};
 
 #[derive(Clone, Display, Builder)]
