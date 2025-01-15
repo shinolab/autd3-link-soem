@@ -3,53 +3,55 @@ name = "autd3-link-soem"
 description = "autd3 link using SOEM"
 readme = "README.md"
 keywords = ["autd"]
-version = "29.0.0-rc.13"
+version = "29.0.0-rc.15"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 license = "MIT"
 edition = "2021"
 repository = "https://github.com/shinolab/autd3-link-soem"
 
 [build-dependencies]
-cc = { version = "1.2.7", optional = true }
-glob = { version = "0.3.2", optional = true }
+cc = { version = "1.2.9", optional = true, default-features = false }
+glob = { version = "0.3.2", optional = true, default-features = false }
 anyhow = { version = "1.0.95", optional = true, default-features = false }
 
 [dependencies]
 serde = { version = "1.0.217", optional = true, default-features = false }
-autd3-driver = { version = "29.0.0-rc.13", default-features = false, features = ["derive"] }
-autd3-protobuf = { version = "29.0.0-rc.13", optional = true }
-thiserror = { version = "2.0.9", optional = true, default-features = false }
+autd3-derive = { version = "29.0.0-rc.15", default-features = false }
+autd3-core = { version = "29.0.0-rc.15", default-features = false, features = ["link"] }
+autd3-protobuf = { version = "29.0.0-rc.15", optional = true }
+thiserror = { version = "2.0.11", optional = true, default-features = false }
 time = { version = "0.3.37", optional = true, default-features = false }
 tonic = { version = "0.12.1", optional = true, default-features = false }
-tokio = { version = "1.42.0" }
-async-channel = { version = "2.3.1", optional = true, default-features = false }
-thread-priority = { version = "1.2.0", optional = true }
+thread-priority = { version = "1.2.0", optional = true, default-features = false }
 derive_more = { version = "1.0.0", default-features = false }
-tracing = { version = "0.1.41", default-features = false, features = ["attributes"] }
-ta = { version = "0.5.0", optional = true }
-spin_sleep = { version = "1.3.0", optional = true }
-zerocopy = { version = "0.8.14" }
+tracing = { version = "0.1.41", default-features = false }
+ta = { version = "0.5.0", optional = true, default-features = false }
+spin_sleep = { version = "1.3.0", optional = true, default-features = false }
+zerocopy = { version = "0.8.14", default-features = false }
+crossbeam-channel = { version = "0.5.14", default-features = false, features = ["std"] }
+tokio = { version = "1.43.0", optional = true, features = ["rt-multi-thread"], default-features = false }
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.58.0", optional = true, default-features = false }
+windows = { version = "0.59.0", optional = true, default-features = false }
 
 [features]
-local = ["ta", "cc", "glob", "anyhow", "async-channel", "time", "thiserror", "windows", "thread-priority", "spin_sleep", "tokio/sync", "tokio/time"]
-remote = ["autd3-protobuf", "tonic"]
-default = ["local"]
+default = ["local", "remote"]
+blocking = ["remote", "tokio"]
+local = ["ta", "cc", "glob", "anyhow", "time", "thiserror", "windows", "thread-priority", "spin_sleep"]
+remote = ["autd3-protobuf", "tonic", "autd3-core/async"]
 all = ["local", "remote"]
 serde = ["dep:serde"]
-async-trait = ["autd3-driver/async-trait", "autd3-protobuf/async-trait"]
+async = ["autd3-core/async"]
+async-trait = ["autd3-core/async-trait", "autd3-protobuf/async-trait"]
 
 [dev-dependencies]
 anyhow = { version = "1.0.79", default-features = false }
-autd3 = { version = "29.0.0-rc.13" }
-tokio = { version = "1.35.1", features = ["macros"] }
+autd3 = { version = "29.0.0-rc.15" }
 tracing-subscriber = { version = "0.3.18", features = ["fmt"], default-features = false }
 
 [[example]]
 name = "remote_soem"
-required-features = ["remote"]
+required-features = ["remote", "blocking"]
 
 [package.metadata.docs.rs]
 all-features = true

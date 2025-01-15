@@ -2,11 +2,17 @@ use std::{num::NonZeroUsize, time::Duration};
 
 use super::{
     error_handler::{ErrHandler, Status},
+    sync_mode::SyncMode,
     timer_strategy::TimerStrategy,
-    SyncMode, SOEM,
+    SOEM,
 };
 
-use autd3_driver::{derive::*, ethercat::EC_CYCLE_TIME_BASE, link::LinkBuilder};
+use autd3_core::{
+    ethercat::EC_CYCLE_TIME_BASE,
+    geometry::Geometry,
+    link::{LinkBuilder, LinkError},
+};
+use autd3_derive::Builder;
 
 use derive_more::Debug;
 
@@ -102,14 +108,24 @@ impl SOEMBuilder {
     }
 }
 
-#[cfg_attr(feature = "async-trait", autd3_driver::async_trait)]
 impl LinkBuilder for SOEMBuilder {
     type L = SOEM;
 
-    async fn open(
-        self,
-        geometry: &autd3_driver::geometry::Geometry,
-    ) -> Result<Self::L, AUTDDriverError> {
-        Self::L::open(self, geometry).await
+    fn open(self, geometry: &Geometry) -> Result<Self::L, LinkError> {
+        Self::L::open(self, geometry)
+    }
+}
+
+#[cfg(feature = "async")]
+use autd3_core::link::AsyncLinkBuilder;
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[cfg_attr(feature = "async-trait", autd3_core::async_trait)]
+impl AsyncLinkBuilder for SOEMBuilder {
+    type L = SOEM;
+
+    async fn open(self, geometry: &Geometry) -> Result<Self::L, LinkError> {
+        <Self as LinkBuilder>::open(self, geometry)
     }
 }
