@@ -3,7 +3,7 @@ name = "autd3-link-soem"
 description = "autd3 link using SOEM"
 readme = "README.md"
 keywords = ["autd"]
-version = "29.0.0-rc.15"
+version = "29.0.0-rc.16"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 license = "MIT"
 edition = "2021"
@@ -16,9 +16,9 @@ anyhow = { version = "1.0.95", optional = true, default-features = false }
 
 [dependencies]
 serde = { version = "1.0.217", optional = true, default-features = false }
-autd3-derive = { version = "29.0.0-rc.15", default-features = false }
-autd3-core = { version = "29.0.0-rc.15", default-features = false, features = ["link"] }
-autd3-protobuf = { version = "29.0.0-rc.15", optional = true }
+autd3-derive = { version = "29.0.0-rc.16", default-features = false }
+autd3-core = { version = "29.0.0-rc.16", default-features = false, features = ["link"] }
+autd3-protobuf = { version = "29.0.0-rc.16", optional = true }
 thiserror = { version = "2.0.11", optional = true, default-features = false }
 time = { version = "0.3.37", optional = true, default-features = false }
 tonic = { version = "0.12.1", optional = true, default-features = false }
@@ -29,7 +29,7 @@ ta = { version = "0.5.0", optional = true, default-features = false }
 spin_sleep = { version = "1.3.0", optional = true, default-features = false }
 zerocopy = { version = "0.8.14", default-features = false }
 crossbeam-channel = { version = "0.5.14", default-features = false, features = ["std"] }
-tokio = { version = "1.43.0", optional = true, features = ["rt-multi-thread"], default-features = false }
+tokio = { version = "1.43.0", optional = true, default-features = false, features = ["rt-multi-thread"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.59.0", optional = true, default-features = false }
@@ -46,7 +46,7 @@ async-trait = ["autd3-core/async-trait", "autd3-protobuf/async-trait"]
 
 [dev-dependencies]
 anyhow = { version = "1.0.79", default-features = false }
-autd3 = { version = "29.0.0-rc.15" }
+autd3 = { version = "29.0.0-rc.16" }
 tracing-subscriber = { version = "0.3.18", features = ["fmt"], default-features = false }
 
 [[example]]
