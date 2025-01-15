@@ -6,7 +6,7 @@ use autd3_core::{
 };
 use autd3_protobuf::*;
 
-/// A [`Link`] using [SOEM] on a remote server.
+/// An [`AsyncLink`] using [SOEM] on a remote server.
 ///
 /// To use this link, you need to run [`SOEMAUTDServer`] on the remote server before.
 ///
