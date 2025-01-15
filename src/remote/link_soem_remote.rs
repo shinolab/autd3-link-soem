@@ -23,7 +23,7 @@ pub struct RemoteSOEMBuilder {
     addr: SocketAddr,
 }
 
-#[cfg_attr(feature = "async-trait", autd3_driver::async_trait)]
+#[cfg_attr(feature = "async-trait", autd3_core::async_trait)]
 impl AsyncLinkBuilder for RemoteSOEMBuilder {
     type L = RemoteSOEM;
 
@@ -50,7 +50,7 @@ impl RemoteSOEM {
     }
 }
 
-#[cfg_attr(feature = "async-trait", autd3_driver::async_trait)]
+#[cfg_attr(feature = "async-trait", autd3_core::async_trait)]
 impl AsyncLink for RemoteSOEM {
     async fn close(&mut self) -> Result<(), LinkError> {
         self.is_open = false;
