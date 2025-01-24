@@ -11,7 +11,7 @@ mod state;
 mod sync_mode;
 mod timer_strategy;
 
-pub use builder::SOEMBuilder;
+pub use builder::{SOEMBuilder, SOEMOption};
 pub use error_handler::Status;
 pub use ethernet_adapters::EthernetAdapters;
 pub use link_soem::SOEM;
