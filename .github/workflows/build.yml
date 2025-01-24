@@ -41,6 +41,6 @@ jobs:
       - uses: ./.github/actions/setup-build
         with:
           toolchain: nightly
-      - run: python3 build.py doc
+      - run: cargo make doc
       - uses: dtolnay/install@cargo-docs-rs
       - run: cargo +nightly docs-rs
