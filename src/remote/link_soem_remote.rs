@@ -64,7 +64,7 @@ impl AsyncLink for RemoteSOEM {
     async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
         Ok(self
             .client
-            .send_data(tx.to_msg(None))
+            .send_data(tx.to_msg(None)?)
             .await
             .map_err(AUTDProtoBufError::from)?
             .into_inner()

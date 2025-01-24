@@ -26,10 +26,8 @@ pub enum Status {
     StateChanged = 2,
 }
 
-pub type ErrHandler = Box<dyn Fn(usize, Status) + Send + Sync>;
-
 pub struct EcatErrorHandler<F: Fn(usize, Status)> {
-    pub(crate) err_handler: Option<F>,
+    pub(crate) err_handler: F,
 }
 
 impl<F: Fn(usize, Status)> EcatErrorHandler<F> {
@@ -65,16 +63,12 @@ impl<F: Fn(usize, Status)> EcatErrorHandler<F> {
                         if slave.state
                             == ec_state_EC_STATE_SAFE_OP as u16 + ec_state_EC_STATE_ERROR as u16
                         {
-                            if let Some(f) = &self.err_handler {
-                                f(i - 1, Status::Error);
-                            }
+                            (self.err_handler)(i - 1, Status::Error);
                             slave.state =
                                 ec_state_EC_STATE_SAFE_OP as u16 + ec_state_EC_STATE_ACK as u16;
                             ec_writestate(i as _);
                         } else if slave.state == ec_state_EC_STATE_SAFE_OP as u16 {
-                            if let Some(f) = &self.err_handler {
-                                f(i - 1, Status::StateChanged);
-                            }
+                            (self.err_handler)(i - 1, Status::StateChanged);
                             slave.state = ec_state_EC_STATE_OPERATIONAL as _;
                             ec_writestate(i as _);
                         } else if slave.state > ec_state_EC_STATE_NONE as _ {
@@ -89,9 +83,7 @@ impl<F: Fn(usize, Status)> EcatErrorHandler<F> {
                             );
                             if slave.state == ec_state_EC_STATE_NONE as u16 {
                                 slave.islost = 1;
-                                if let Some(f) = &self.err_handler {
-                                    f(i - 1, Status::Lost);
-                                }
+                                (self.err_handler)(i - 1, Status::Lost);
                             }
                         }
                     }

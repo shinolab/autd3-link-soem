@@ -3,22 +3,21 @@ name = "autd3-link-soem"
 description = "autd3 link using SOEM"
 readme = "README.md"
 keywords = ["autd"]
-version = "29.0.0-rc.16"
+version = "29.0.0-rc.17"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 license = "MIT"
 edition = "2021"
 repository = "https://github.com/shinolab/autd3-link-soem"
 
 [build-dependencies]
-cc = { version = "1.2.9", optional = true, default-features = false }
+cc = { version = "1.2.10", optional = true, default-features = false }
 glob = { version = "0.3.2", optional = true, default-features = false }
 anyhow = { version = "1.0.95", optional = true, default-features = false }
 
 [dependencies]
 serde = { version = "1.0.217", optional = true, default-features = false }
-autd3-derive = { version = "29.0.0-rc.16", default-features = false }
-autd3-core = { version = "29.0.0-rc.16", default-features = false, features = ["link"] }
-autd3-protobuf = { version = "29.0.0-rc.16", optional = true }
+autd3-core = { version = "29.0.0-rc.17", default-features = false, features = ["link"] }
+autd3-protobuf = { version = "29.0.0-rc.17", optional = true }
 thiserror = { version = "2.0.11", optional = true, default-features = false }
 time = { version = "0.3.37", optional = true, default-features = false }
 tonic = { version = "0.12.1", optional = true, default-features = false }
@@ -30,6 +29,7 @@ spin_sleep = { version = "1.3.0", optional = true, default-features = false }
 zerocopy = { version = "0.8.14", default-features = false }
 crossbeam-channel = { version = "0.5.14", default-features = false, features = ["std"] }
 tokio = { version = "1.43.0", optional = true, default-features = false, features = ["rt-multi-thread"] }
+getset = { version = "0.1.4", default-features = false, optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.59.0", optional = true, default-features = false }
@@ -37,8 +37,8 @@ windows = { version = "0.59.0", optional = true, default-features = false }
 [features]
 default = ["local", "remote"]
 blocking = ["remote", "tokio"]
-local = ["ta", "cc", "glob", "anyhow", "time", "thiserror", "windows", "thread-priority", "spin_sleep"]
-remote = ["autd3-protobuf", "tonic", "autd3-core/async"]
+local = ["ta", "cc", "glob", "anyhow", "time", "thiserror", "windows", "thread-priority", "spin_sleep", "getset"]
+remote = ["autd3-protobuf", "tonic", "async"]
 all = ["local", "remote"]
 serde = ["dep:serde"]
 async = ["autd3-core/async"]
@@ -46,12 +46,9 @@ async-trait = ["autd3-core/async-trait", "autd3-protobuf/async-trait"]
 
 [dev-dependencies]
 anyhow = { version = "1.0.79", default-features = false }
-autd3 = { version = "29.0.0-rc.16" }
+autd3 = { version = "29.0.0-rc.17", features = ["async"] }
 tracing-subscriber = { version = "0.3.18", features = ["fmt"], default-features = false }
-
-[[example]]
-name = "remote_soem"
-required-features = ["remote", "blocking"]
+tokio = { version = "1.43.0", default-features = false, features = ["rt-multi-thread"] }
 
 [package.metadata.docs.rs]
 all-features = true

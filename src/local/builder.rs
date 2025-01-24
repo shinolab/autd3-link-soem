@@ -1,85 +1,48 @@
 use std::{num::NonZeroUsize, time::Duration};
 
-use super::{
-    error_handler::{ErrHandler, Status},
-    sync_mode::SyncMode,
-    timer_strategy::TimerStrategy,
-    SOEM,
-};
+use super::{error_handler::Status, sync_mode::SyncMode, timer_strategy::TimerStrategy, SOEM};
 
 use autd3_core::{
     ethercat::EC_CYCLE_TIME_BASE,
     geometry::Geometry,
     link::{LinkBuilder, LinkError},
 };
-use autd3_derive::Builder;
 
 use derive_more::Debug;
 
 use thread_priority::ThreadPriority;
 
-/// A builder for [`SOEM`].
-#[derive(Builder, Debug)]
-pub struct SOEMBuilder {
-    #[get]
-    #[set]
+/// A option for [`SOEM`].
+#[derive(Debug)]
+pub struct SOEMOption {
     /// The size of the send queue buffer. The default is 32.
-    pub(crate) buf_size: NonZeroUsize,
-    #[get]
-    #[set]
+    pub buf_size: NonZeroUsize,
     /// The timer strategy. The default is [`TimerStrategy::SpinSleep`].
-    pub(crate) timer_strategy: TimerStrategy,
-    #[get]
-    #[set]
+    pub timer_strategy: TimerStrategy,
     /// The synchronization mode. The default is [`SyncMode::DC`].
-    pub(crate) sync_mode: SyncMode,
-    #[get(ref)]
-    #[set(into)]
+    pub sync_mode: SyncMode,
     /// The network interface name. If this is empty, the network interface will be automatically selected to which the AUTD3 device is connected. The default is empty.
-    pub(crate) ifname: String,
-    #[get]
-    #[set]
+    pub ifname: String,
     /// The interval to check the state. The default is 100ms.
-    pub(crate) state_check_interval: Duration,
-    #[get]
-    #[set]
+    pub state_check_interval: Duration,
     /// The cycle of the sync0 signal. The value must be a multiple of [`EC_CYCLE_TIME_BASE`] and not be zero. The default is 1ms.
-    pub(crate) sync0_cycle: Duration,
-    #[get]
-    #[set]
+    pub sync0_cycle: Duration,
     /// The send cycle. The value must be a multiple of [`EC_CYCLE_TIME_BASE`] and not be zero. The default is 1ms.
-    pub(crate) send_cycle: Duration,
-    #[get]
-    #[set]
+    pub send_cycle: Duration,
     /// The thread priority. The default is [`ThreadPriority::Max`].
-    pub(crate) thread_priority: ThreadPriority,
+    pub thread_priority: ThreadPriority,
     #[cfg(target_os = "windows")]
-    #[get]
-    #[set]
     /// The process priority. The default is [`super::ProcessPriority::High`].
-    pub(crate) process_priority: super::ProcessPriority,
-    #[debug(skip)]
-    /// The error handler which is called when an error occurs. The default is `None`.
-    pub(crate) err_handler: Option<ErrHandler>,
-    #[get]
-    #[set]
+    pub process_priority: super::ProcessPriority,
     /// The synchronization tolerance. The default is 1us.
-    pub(crate) sync_tolerance: Duration,
-    #[get]
-    #[set]
+    pub sync_tolerance: Duration,
     /// The synchronization timeout. The default is 10s.
-    pub(crate) sync_timeout: Duration,
+    pub sync_timeout: Duration,
 }
 
-impl Default for SOEMBuilder {
+impl Default for SOEMOption {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl SOEMBuilder {
-    pub(crate) fn new() -> Self {
-        SOEMBuilder {
+        Self {
             buf_size: NonZeroUsize::new(32).unwrap(),
             timer_strategy: TimerStrategy::SpinSleep,
             sync_mode: SyncMode::DC,
@@ -90,25 +53,22 @@ impl SOEMBuilder {
             thread_priority: ThreadPriority::Max,
             #[cfg(target_os = "windows")]
             process_priority: super::ProcessPriority::High,
-            err_handler: None,
             sync_tolerance: std::time::Duration::from_micros(1),
             sync_timeout: std::time::Duration::from_secs(10),
         }
     }
-
-    /// Set the `err_handler` field.
-    pub fn with_err_handler(
-        self,
-        err_handler: impl Fn(usize, Status) + Send + Sync + 'static,
-    ) -> Self {
-        Self {
-            err_handler: Some(Box::new(err_handler)),
-            ..self
-        }
-    }
 }
 
-impl LinkBuilder for SOEMBuilder {
+/// A builder for [`SOEM`].
+#[derive(Debug)]
+pub struct SOEMBuilder<F: Fn(usize, Status) + Send + Sync + 'static> {
+    pub(crate) option: SOEMOption,
+    #[debug(skip)]
+    /// The error handler which is called when an error occurs. The default is `None`.
+    pub(crate) err_handler: F,
+}
+
+impl<F: Fn(usize, Status) + Send + Sync + 'static> LinkBuilder for SOEMBuilder<F> {
     type L = SOEM;
 
     fn open(self, geometry: &Geometry) -> Result<Self::L, LinkError> {
@@ -122,7 +82,7 @@ use autd3_core::link::AsyncLinkBuilder;
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[cfg_attr(feature = "async-trait", autd3_core::async_trait)]
-impl AsyncLinkBuilder for SOEMBuilder {
+impl<F: Fn(usize, Status) + Send + Sync + 'static> AsyncLinkBuilder for SOEMBuilder<F> {
     type L = SOEM;
 
     async fn open(self, geometry: &Geometry) -> Result<Self::L, LinkError> {
