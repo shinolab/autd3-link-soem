@@ -13,7 +13,7 @@ use derive_more::Debug;
 use thread_priority::ThreadPriority;
 
 /// A option for [`SOEM`].
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SOEMOption {
     /// The size of the send queue buffer. The default is 32.
     pub buf_size: NonZeroUsize,
