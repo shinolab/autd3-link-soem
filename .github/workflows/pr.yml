@@ -27,7 +27,7 @@ jobs:
   test:
     needs: changed-files
     if: ${{ needs.changed-files.outputs.src == 'true' }}
-    name: test-on-${{ matrix.os }}
+    name: test-on-${{ matrix.os }}${{ matrix.features && '-' }}${{ matrix.features }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -36,6 +36,8 @@ jobs:
           - os: windows-latest
           - os: ubuntu-latest
           - os: macos-latest
+          - os: ubuntu-latest
+            features: "blocking"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,7 +46,7 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
-      - run: cargo make check
+      - run: cargo make check --features "${{ matrix.features }}"
 
   all-tests-passed:
     if: ${{ always() }}

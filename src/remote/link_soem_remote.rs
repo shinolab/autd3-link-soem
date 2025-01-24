@@ -127,10 +127,6 @@ impl Link for RemoteSOEMBlocking {
     fn is_open(&self) -> bool {
         self.inner.is_open()
     }
-
-    fn trace(&mut self, timeout: Option<std::time::Duration>, parallel_threshold: Option<usize>) {
-        self.inner.trace(timeout, parallel_threshold)
-    }
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "blocking")))]
