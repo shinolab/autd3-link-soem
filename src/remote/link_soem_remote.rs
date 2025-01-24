@@ -64,7 +64,7 @@ impl AsyncLink for RemoteSOEM {
     async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
         Ok(self
             .client
-            .send_data(tx.to_msg(None))
+            .send_data(tx.to_msg(None)?)
             .await
             .map_err(AUTDProtoBufError::from)?
             .into_inner()
@@ -126,10 +126,6 @@ impl Link for RemoteSOEMBlocking {
 
     fn is_open(&self) -> bool {
         self.inner.is_open()
-    }
-
-    fn trace(&mut self, timeout: Option<std::time::Duration>, parallel_threshold: Option<usize>) {
-        self.inner.trace(timeout, parallel_threshold)
     }
 }
 

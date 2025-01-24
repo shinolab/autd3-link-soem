@@ -1,0 +1,111 @@
+[config]
+default_to_workspace = false
+skip_core_tasks = true
+
+[tasks.format]
+command = "cargo"
+args = ["fmt"]
+
+[tasks.clean]
+command = "cargo"
+args = ["clean"]
+
+[tasks.check]
+dependencies = ["format", "build", "test", "lint"]
+
+[tasks.build]
+command = "cargo"
+args = ["build", "${@}"]
+
+[tasks.lint]
+command = "cargo"
+args = ["clippy", "--tests", "${@}", "--", "-D", "warnings"]
+
+[tasks.doc]
+env = { RUSTDOCFLAGS = "--cfg docsrs -D warnings" }
+toolchain = "nightly"
+command = "cargo"
+args = ["doc", "--no-deps"]
+
+[tasks.test]
+dependencies = ["test-lib", "test-doc"]
+
+[tasks.test-lib]
+command = "cargo"
+args = ["nextest", "run", "${@}"]
+
+[tasks.test-doc]
+command = "cargo"
+args = ["test", "--doc", "${@}"]
+
+[tasks.run]
+run_task = [{ name = "run-debug", condition = { profiles = ["debug"] } }, { name = "run-release" }]
+
+[tasks.run-release]
+command = "cargo"
+args = ["run", "--example", "${@}", "--release"]
+
+[tasks.run-debug]
+command = "cargo"
+args = ["run", "--example", "${@}"]
+
+[tasks.cov]
+dependencies = ["cov-build", "cov-test", "cov-grcov", "cov-cleanup"]
+
+[tasks.cov-build]
+env = { RUSTFLAGS = "-Cinstrument-coverage", LLVM_PROFILE_FILE = "${CARGO_MAKE_WORKING_DIRECTORY}/%m-%p.profraw" }
+command = "cargo"
+args = ["build"]
+
+[tasks.cov-test]
+env = { RUSTFLAGS = "-Cinstrument-coverage", LLVM_PROFILE_FILE = "${CARGO_MAKE_WORKING_DIRECTORY}/%m-%p.profraw" }
+command = "cargo"
+args = ["test"]
+
+[tasks.cov-grcov]
+command = "grcov"
+args = [
+    ".",
+    "-s",
+    ".",
+    "--binary-path",
+    "./target/debug",
+    "--llvm",
+    "--branch",
+    "--ignore-not-existing",
+    "-o",
+    "./coverage",
+    "-t",
+    "${@}",
+    "--excl-line",
+    "GRCOV_EXCL_LINE|#\\[derive|#\\[error|#\\[bitfield_struct|unreachable!|unimplemented!|tracing::(debug|trace|info|warn|error)!\\([\\s\\S]*\\);",
+    "--keep-only",
+    "src/**/*.rs",
+    "--excl-start",
+    "GRCOV_EXCL_START",
+    "--excl-stop",
+    "GRCOV_EXCL_STOP",
+]
+
+[tasks.cov-cleanup]
+ignore_errors = true
+script_runner = "@shell"
+script = '''
+rm ./*.profraw
+'''
+
+[tasks.update-version]
+script_runner = "python"
+script_extension = "py"
+script = '''
+import sys
+import re
+from pathlib import Path
+
+version = sys.argv[1]
+file = Path("Cargo.toml")
+content = file.read_text(encoding="utf-8")
+content = re.sub(r'^version = "(.*?)"', f'version = "{version}"', content, flags=re.MULTILINE)
+content = re.sub(r'^autd3(.*)version = "(.*?)"', f'autd3\\1version = "{version}"', content, flags=re.MULTILINE)
+file.write_text(content, encoding="utf-8")
+'''
