@@ -24,14 +24,15 @@ use autd3_core::{
 };
 
 use super::{
+    builder::SOEMOption,
     error::SOEMError,
-    error_handler::{EcatErrorHandler, ErrHandler},
+    error_handler::EcatErrorHandler,
     ethernet_adapters::EthernetAdapters,
     iomap::IOMap,
     sleep::{Sleep, SpinSleep, SpinWait, StdSleep},
     soem_bindings::*,
     state::EcStatus,
-    TimerStrategy,
+    Status, TimerStrategy,
 };
 
 /// A [`Link`] using [SOEM].
@@ -51,8 +52,14 @@ pub struct SOEM {
 
 impl SOEM {
     /// Creates a new [`SOEMBuilder`].
-    pub fn builder() -> SOEMBuilder {
-        SOEMBuilder::new()
+    pub fn builder<F: Fn(usize, Status) + Send + Sync + 'static>(
+        err_handler: F,
+        option: SOEMOption,
+    ) -> SOEMBuilder<F> {
+        SOEMBuilder {
+            err_handler,
+            option,
+        }
     }
 
     #[doc(hidden)]
@@ -74,24 +81,30 @@ impl SOEM {
 
 impl SOEM {
     #[instrument(level = "debug", skip(builder, geometry))]
-    pub(crate) fn open(builder: SOEMBuilder, geometry: &Geometry) -> Result<Self, LinkError> {
+    pub(crate) fn open<F: Fn(usize, Status) + Send + Sync + 'static>(
+        builder: SOEMBuilder<F>,
+        geometry: &Geometry,
+    ) -> Result<Self, LinkError> {
         tracing::debug!("Opening SOEM link: {:?}", builder);
 
         unsafe {
             let SOEMBuilder {
-                buf_size,
-                timer_strategy,
-                sync_mode,
-                ifname,
-                state_check_interval,
-                sync0_cycle,
-                send_cycle,
-                thread_priority,
-                #[cfg(target_os = "windows")]
-                process_priority,
-                mut err_handler,
-                sync_tolerance,
-                sync_timeout,
+                err_handler,
+                option:
+                    SOEMOption {
+                        buf_size,
+                        timer_strategy,
+                        sync_mode,
+                        ifname,
+                        state_check_interval,
+                        sync0_cycle,
+                        send_cycle,
+                        thread_priority,
+                        #[cfg(target_os = "windows")]
+                        process_priority,
+                        sync_tolerance,
+                        sync_timeout,
+                    },
             } = builder;
 
             if sync0_cycle.is_zero() || sync0_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0
@@ -271,7 +284,7 @@ impl SOEM {
             );
             result.ecat_check_th_guard = Some(SOEMEcatCheckThreadGuard::new(
                 result.is_open.clone(),
-                err_handler.take(),
+                err_handler,
                 wkc.clone(),
                 state_check_interval,
             ));
@@ -684,9 +697,9 @@ struct SOEMEcatCheckThreadGuard {
 }
 
 impl SOEMEcatCheckThreadGuard {
-    fn new(
+    fn new<F: Fn(usize, Status) + Send + Sync + 'static>(
         is_open: Arc<AtomicBool>,
-        err_handler: Option<ErrHandler>,
+        err_handler: F,
         wkc: Arc<AtomicI32>,
         state_check_interval: Duration,
     ) -> Self {

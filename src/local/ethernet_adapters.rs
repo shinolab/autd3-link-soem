@@ -2,15 +2,15 @@ use crate::local::soem_bindings;
 
 use std::ffi::CStr;
 
-use autd3_derive::Builder;
 use derive_more::{Deref, Display, IntoIterator};
+use getset::Getters;
 
-#[derive(Clone, Display, Builder)]
+#[derive(Clone, Display, Getters)]
 #[display("{}, {}", name, desc)]
 pub struct EthernetAdapter {
-    #[get(ref)]
+    #[getset(get = "pub")]
     desc: String,
-    #[get(ref)]
+    #[getset(get = "pub")]
     name: String,
 }
 
