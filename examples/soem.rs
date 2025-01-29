@@ -13,7 +13,7 @@ fn main() -> Result<()> {
             pos: Point3::origin(),
             rot: UnitQuaternion::identity(),
         }],
-        SOEM::builder(
+        SOEM::new(
             |slave, status| {
                 eprintln!("slave[{}]: {}", slave, status);
                 if status == Status::Lost {

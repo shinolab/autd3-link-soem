@@ -14,7 +14,7 @@ async fn main() -> Result<()> {
             pos: Point3::origin(),
             rot: UnitQuaternion::identity(),
         }],
-        RemoteSOEM::builder("127.0.0.1:8080".parse()?),
+        RemoteSOEM::new("127.0.0.1:8080".parse()?),
     )
     .await?;
 

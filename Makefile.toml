@@ -55,12 +55,12 @@ dependencies = ["cov-build", "cov-test", "cov-grcov", "cov-cleanup"]
 [tasks.cov-build]
 env = { RUSTFLAGS = "-Cinstrument-coverage", LLVM_PROFILE_FILE = "${CARGO_MAKE_WORKING_DIRECTORY}/%m-%p.profraw" }
 command = "cargo"
-args = ["build"]
+args = ["build", "--features", "remote", "--features", "blocking"]
 
 [tasks.cov-test]
 env = { RUSTFLAGS = "-Cinstrument-coverage", LLVM_PROFILE_FILE = "${CARGO_MAKE_WORKING_DIRECTORY}/%m-%p.profraw" }
 command = "cargo"
-args = ["test"]
+args = ["test", "--features", "remote", "--features", "blocking"]
 
 [tasks.cov-grcov]
 command = "grcov"

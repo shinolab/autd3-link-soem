@@ -1,18 +1,16 @@
 use std::{num::NonZeroUsize, time::Duration};
 
-use super::{error_handler::Status, sync_mode::SyncMode, timer_strategy::TimerStrategy, SOEM};
+use super::{sync_mode::SyncMode, timer_strategy::TimerStrategy};
 
-use autd3_core::{
-    ethercat::EC_CYCLE_TIME_BASE,
-    geometry::Geometry,
-    link::{LinkBuilder, LinkError},
-};
+use autd3_core::ethercat::EC_CYCLE_TIME_BASE;
 
 use derive_more::Debug;
 
 use thread_priority::ThreadPriority;
 
 /// A option for [`SOEM`].
+///
+/// [`SOEM`]: crate::local::link_soem::SOEM
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SOEMOption {
     /// The size of the send queue buffer. The default is 32.
@@ -56,36 +54,5 @@ impl Default for SOEMOption {
             sync_tolerance: std::time::Duration::from_micros(1),
             sync_timeout: std::time::Duration::from_secs(10),
         }
-    }
-}
-
-/// A builder for [`SOEM`].
-#[derive(Debug)]
-pub struct SOEMBuilder<F: Fn(usize, Status) + Send + Sync + 'static> {
-    pub(crate) option: SOEMOption,
-    #[debug(skip)]
-    /// The error handler which is called when an error occurs. The default is `None`.
-    pub(crate) err_handler: F,
-}
-
-impl<F: Fn(usize, Status) + Send + Sync + 'static> LinkBuilder for SOEMBuilder<F> {
-    type L = SOEM;
-
-    fn open(self, geometry: &Geometry) -> Result<Self::L, LinkError> {
-        Self::L::open(self, geometry)
-    }
-}
-
-#[cfg(feature = "async")]
-use autd3_core::link::AsyncLinkBuilder;
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-#[cfg_attr(feature = "async-trait", autd3_core::async_trait)]
-impl<F: Fn(usize, Status) + Send + Sync + 'static> AsyncLinkBuilder for SOEMBuilder<F> {
-    type L = SOEM;
-
-    async fn open(self, geometry: &Geometry) -> Result<Self::L, LinkError> {
-        <Self as LinkBuilder>::open(self, geometry)
     }
 }
