@@ -9,6 +9,8 @@ use derive_more::Debug;
 use thread_priority::ThreadPriority;
 
 /// A option for [`SOEM`].
+///
+/// [`SOEM`]: crate::local::link_soem::SOEM
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SOEMOption {
     /// The size of the send queue buffer. The default is 32.
