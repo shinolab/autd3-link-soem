@@ -12,9 +12,7 @@ use crossbeam_channel::{bounded, Receiver, Sender};
 use ta::{indicators::ExponentialMovingAverage, Next};
 use thread_priority::ThreadPriority;
 use time::ext::NumericalDuration;
-use tracing::instrument;
 
-pub use crate::local::builder::SOEMBuilder;
 use crate::local::sync_mode::SyncMode;
 
 use autd3_core::{
@@ -24,21 +22,18 @@ use autd3_core::{
 };
 
 use super::{
-    builder::SOEMOption,
     error::SOEMError,
     error_handler::EcatErrorHandler,
     ethernet_adapters::EthernetAdapters,
     iomap::IOMap,
+    option::SOEMOption,
     sleep::{Sleep, SpinSleep, SpinWait, StdSleep},
     soem_bindings::*,
     state::EcStatus,
     Status, TimerStrategy,
 };
 
-/// A [`Link`] using [SOEM].
-///
-/// [SOEM]: https://github.com/OpenEtherCATsociety/SOEM
-pub struct SOEM {
+struct SOEMInner {
     sender: Sender<Vec<TxMessage>>,
     is_open: Arc<AtomicBool>,
     send_cycle: Duration,
@@ -50,62 +45,29 @@ pub struct SOEM {
     ecat_check_th_guard: Option<SOEMEcatCheckThreadGuard>,
 }
 
-impl SOEM {
-    /// Creates a new [`SOEMBuilder`].
-    pub fn builder<F: Fn(usize, Status) + Send + Sync + 'static>(
+impl SOEMInner {
+    pub(crate) fn open<F: Fn(usize, Status) + Send + Sync + 'static>(
         err_handler: F,
         option: SOEMOption,
-    ) -> SOEMBuilder<F> {
-        SOEMBuilder {
-            err_handler,
-            option,
-        }
-    }
-
-    #[doc(hidden)]
-    pub fn num_devices() -> usize {
-        unsafe { ec_slavecount as usize }
-    }
-
-    #[doc(hidden)]
-    pub fn clear_iomap(
-        &mut self,
-    ) -> Result<(), std::sync::PoisonError<std::sync::MutexGuard<'_, IOMap>>> {
-        while !self.sender.is_empty() {
-            std::thread::sleep(Duration::from_millis(100));
-        }
-        self.io_map.lock()?.clear();
-        Ok(())
-    }
-}
-
-impl SOEM {
-    #[instrument(level = "debug", skip(builder, geometry))]
-    pub(crate) fn open<F: Fn(usize, Status) + Send + Sync + 'static>(
-        builder: SOEMBuilder<F>,
         geometry: &Geometry,
     ) -> Result<Self, LinkError> {
-        tracing::debug!("Opening SOEM link: {:?}", builder);
+        tracing::debug!("Opening SOEM link: {:?}", option);
 
         unsafe {
-            let SOEMBuilder {
-                err_handler,
-                option:
-                    SOEMOption {
-                        buf_size,
-                        timer_strategy,
-                        sync_mode,
-                        ifname,
-                        state_check_interval,
-                        sync0_cycle,
-                        send_cycle,
-                        thread_priority,
-                        #[cfg(target_os = "windows")]
-                        process_priority,
-                        sync_tolerance,
-                        sync_timeout,
-                    },
-            } = builder;
+            let SOEMOption {
+                buf_size,
+                timer_strategy,
+                sync_mode,
+                ifname,
+                state_check_interval,
+                sync0_cycle,
+                send_cycle,
+                thread_priority,
+                #[cfg(target_os = "windows")]
+                process_priority,
+                sync_tolerance,
+                sync_timeout,
+            } = option;
 
             if sync0_cycle.is_zero() || sync0_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0
             {
@@ -293,6 +255,41 @@ impl SOEM {
         }
     }
 
+    fn close(&mut self) -> Result<(), LinkError> {
+        if !self.is_open.load(Ordering::Acquire) {
+            return Ok(());
+        }
+        self.is_open.store(false, Ordering::Release);
+
+        while !self.sender.is_empty() {
+            std::thread::sleep(self.send_cycle);
+        }
+
+        let _ = self.ecat_th_guard.take();
+        let _ = self.ecat_check_th_guard.take();
+        let _ = self.config_dc_guard.take();
+        let _ = self.op_state_guard.take();
+        let _ = self.init_guard.take();
+
+        Ok(())
+    }
+
+    fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
+        self.sender
+            .send(tx.to_vec())
+            .map_err(|_| LinkError::new("Link is closed.".to_owned()))?;
+        Ok(true)
+    }
+
+    fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
+        let io_map = self
+            .io_map
+            .lock()
+            .map_err(|_| LinkError::new("Link is closed.".to_owned()))?;
+        rx.copy_from_slice(io_map.input());
+        Ok(true)
+    }
+
     fn is_autd3(i: i32) -> bool {
         unsafe {
             String::from_utf8(
@@ -339,50 +336,19 @@ impl SOEM {
                 |adapter| Ok(adapter.name().to_owned()),
             )
     }
-}
 
-impl Link for SOEM {
-    fn close(&mut self) -> Result<(), LinkError> {
-        if !self.is_open.load(Ordering::Acquire) {
-            return Ok(());
-        }
-        self.is_open.store(false, Ordering::Release);
-
+    pub fn clear_iomap(
+        &mut self,
+    ) -> Result<(), std::sync::PoisonError<std::sync::MutexGuard<'_, IOMap>>> {
         while !self.sender.is_empty() {
-            std::thread::sleep(self.send_cycle);
+            std::thread::sleep(Duration::from_millis(100));
         }
-
-        let _ = self.ecat_th_guard.take();
-        let _ = self.ecat_check_th_guard.take();
-        let _ = self.config_dc_guard.take();
-        let _ = self.op_state_guard.take();
-        let _ = self.init_guard.take();
-
+        self.io_map.lock()?.clear();
         Ok(())
     }
-
-    fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
-        self.sender
-            .send(tx.to_vec())
-            .map_err(|_| LinkError::new("Link is closed.".to_owned()))?;
-        Ok(true)
-    }
-
-    fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
-        let io_map = self
-            .io_map
-            .lock()
-            .map_err(|_| LinkError::new("Link is closed.".to_owned()))?;
-        rx.copy_from_slice(io_map.input());
-        Ok(true)
-    }
-
-    fn is_open(&self) -> bool {
-        self.is_open.load(Ordering::Acquire)
-    }
 }
 
-impl Drop for SOEM {
+impl Drop for SOEMInner {
     fn drop(&mut self) {
         self.is_open.store(false, Ordering::Release);
         let _ = self.ecat_th_guard.take();
@@ -390,6 +356,69 @@ impl Drop for SOEM {
         let _ = self.config_dc_guard.take();
         let _ = self.op_state_guard.take();
         let _ = self.init_guard.take();
+    }
+}
+
+/// A [`Link`] using [SOEM].
+///
+/// [SOEM]: https://github.com/OpenEtherCATsociety/SOEM
+pub struct SOEM<F: Fn(usize, Status) + Send + Sync + 'static> {
+    option: Option<(F, SOEMOption)>,
+    inner: Option<SOEMInner>,
+}
+
+impl<F: Fn(usize, Status) + Send + Sync + 'static> SOEM<F> {
+    /// Creates a new [`SOEM`].
+    pub fn new(err_handler: F, option: SOEMOption) -> SOEM<F> {
+        SOEM {
+            option: Some((err_handler, option)),
+            inner: None,
+        }
+    }
+
+    #[doc(hidden)]
+    pub fn num_devices() -> usize {
+        unsafe { ec_slavecount as usize }
+    }
+
+    #[doc(hidden)]
+    pub fn clear_iomap(
+        &mut self,
+    ) -> Result<(), std::sync::PoisonError<std::sync::MutexGuard<'_, IOMap>>> {
+        self.inner
+            .as_mut()
+            .map_or(Ok(()), |inner| inner.clear_iomap())
+    }
+}
+
+impl<F: Fn(usize, Status) + Send + Sync + 'static> Link for SOEM<F> {
+    fn open(&mut self, geometry: &Geometry) -> Result<(), LinkError> {
+        if let Some((err_handler, option)) = self.option.take() {
+            self.inner = Some(SOEMInner::open(err_handler, option, geometry)?);
+        }
+        Ok(())
+    }
+
+    fn close(&mut self) -> Result<(), LinkError> {
+        self.inner.take().map_or(Ok(()), |mut inner| inner.close())
+    }
+
+    fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
+        self.inner
+            .as_mut()
+            .map_or(Ok(false), |inner| inner.send(tx))
+    }
+
+    fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
+        self.inner
+            .as_mut()
+            .map_or(Ok(false), |inner| inner.receive(rx))
+    }
+
+    fn is_open(&self) -> bool {
+        self.inner
+            .as_ref()
+            .is_some_and(|inner| inner.is_open.load(Ordering::Acquire))
     }
 }
 
@@ -727,7 +756,11 @@ use autd3_core::link::AsyncLink;
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[cfg_attr(feature = "async-trait", autd3_core::async_trait)]
-impl AsyncLink for SOEM {
+impl<F: Fn(usize, Status) + Send + Sync + 'static> AsyncLink for SOEM<F> {
+    async fn open(&mut self, geometry: &Geometry) -> Result<(), LinkError> {
+        <Self as Link>::open(self, geometry)
+    }
+
     async fn close(&mut self) -> Result<(), LinkError> {
         <Self as Link>::close(self)
     }

@@ -37,7 +37,7 @@ jobs:
           - os: ubuntu-latest
           - os: macos-latest
           - os: ubuntu-latest
-            features: "blocking"
+            features: "remote blocking"
     steps:
       - uses: actions/checkout@v4
         with:
