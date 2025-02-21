@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use autd3::prelude::*;
-use autd3_link_soem::{Status, SOEM};
+use autd3_link_soem::{SOEM, Status};
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt()

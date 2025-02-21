@@ -22,7 +22,9 @@ pub enum SOEMError {
     NotReachedSafeOp(u16),
     #[error("Invalid interface name: {0}")]
     InvalidInterfaceName(String),
-    #[error("Failed to synchronize devices. Maximum system time difference ({0:?}) exceeded the tolerance ({1:?})")]
+    #[error(
+        "Failed to synchronize devices. Maximum system time difference ({0:?}) exceeded the tolerance ({1:?})"
+    )]
     SynchronizeFailed(Duration, Duration),
     #[error("{0}")]
     ThreadPriorityError(#[from] thread_priority::Error),
