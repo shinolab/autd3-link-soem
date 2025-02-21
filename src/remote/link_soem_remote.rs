@@ -33,27 +33,24 @@ impl RemoteSOEMInner {
         Ok(())
     }
 
-    async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
-        Ok(self
-            .client
+    async fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
+        self.client
             .send_data(tx.to_msg(None)?)
             .await
-            .map_err(AUTDProtoBufError::from)?
-            .into_inner()
-            .success)
+            .map_err(AUTDProtoBufError::from)?;
+        Ok(())
     }
 
-    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
+    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<(), LinkError> {
         let rx_ = Vec::<RxMessage>::from_msg(
-            &self
-                .client
+            self.client
                 .read_data(ReadRequest {})
                 .await
                 .map_err(AUTDProtoBufError::from)?
                 .into_inner(),
         )?;
         rx.copy_from_slice(&rx_);
-        Ok(true)
+        Ok(())
     }
 }
 
@@ -96,19 +93,19 @@ impl AsyncLink for RemoteSOEM {
         Ok(())
     }
 
-    async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
+    async fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
         if let Some(inner) = self.inner.as_mut() {
             inner.send(tx).await
         } else {
-            Ok(false)
+            Err(LinkError::new("Link is closed.".to_owned()))
         }
     }
 
-    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
+    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<(), LinkError> {
         if let Some(inner) = self.inner.as_mut() {
             inner.receive(rx).await
         } else {
-            Ok(false)
+            Err(LinkError::new("Link is closed.".to_owned()))
         }
     }
 
@@ -143,30 +140,36 @@ impl Link for RemoteSOEM {
         })
     }
 
-    fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
-        self.runtime.as_ref().map_or(Ok(false), |runtime| {
-            runtime.block_on(async {
-                if let Some(inner) = self.inner.as_mut() {
-                    inner.send(tx).await?;
-                    Ok(true)
-                } else {
-                    Ok(false)
-                }
-            })
-        })
+    fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
+        self.runtime.as_ref().map_or(
+            Err(LinkError::new("Link is closed.".to_owned())),
+            |runtime| {
+                runtime.block_on(async {
+                    if let Some(inner) = self.inner.as_mut() {
+                        inner.send(tx).await?;
+                        Ok(())
+                    } else {
+                        Err(LinkError::new("Link is closed.".to_owned()))
+                    }
+                })
+            },
+        )
     }
 
-    fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
-        self.runtime.as_ref().map_or(Ok(false), |runtime| {
-            runtime.block_on(async {
-                if let Some(inner) = self.inner.as_mut() {
-                    inner.receive(rx).await?;
-                    Ok(true)
-                } else {
-                    Ok(false)
-                }
-            })
-        })
+    fn receive(&mut self, rx: &mut [RxMessage]) -> Result<(), LinkError> {
+        self.runtime.as_ref().map_or(
+            Err(LinkError::new("Link is closed.".to_owned())),
+            |runtime| {
+                runtime.block_on(async {
+                    if let Some(inner) = self.inner.as_mut() {
+                        inner.receive(rx).await?;
+                        Ok(())
+                    } else {
+                        Err(LinkError::new("Link is closed.".to_owned()))
+                    }
+                })
+            },
+        )
     }
 
     fn is_open(&self) -> bool {
