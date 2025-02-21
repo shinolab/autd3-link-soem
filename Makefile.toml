@@ -78,7 +78,7 @@ args = [
     "-t",
     "${@}",
     "--excl-line",
-    "GRCOV_EXCL_LINE|#\\[derive|#\\[error|#\\[bitfield_struct|unreachable!|unimplemented!|tracing::(debug|trace|info|warn|error)!\\([\\s\\S]*\\);",
+    "GRCOV_EXCL_LINE|#//[derive|#//[error|#//[bitfield_struct|unreachable!|unimplemented!|tracing::(debug|trace|info|warn|error)!//([//s//S]*//);",
     "--keep-only",
     "src/**/*.rs",
     "--excl-start",
@@ -106,6 +106,63 @@ version = sys.argv[1]
 file = Path("Cargo.toml")
 content = file.read_text(encoding="utf-8")
 content = re.sub(r'^version = "(.*?)"', f'version = "{version}"', content, flags=re.MULTILINE)
-content = re.sub(r'^autd3(.*)version = "(.*?)"', f'autd3\\1version = "{version}"', content, flags=re.MULTILINE)
+content = re.sub(r'^autd3(.*)version = "(.*?)"', f'autd3//1version = "{version}"', content, flags=re.MULTILINE)
 file.write_text(content, encoding="utf-8")
 '''
+
+[tasks.bindgen]
+windows_alias = "bindgen-windows"
+linux_alias = "bindgen-linux"
+mac_alias = "bindgen-macos"
+
+[tasks.bindgen-windows]
+command = "bindgen"
+args = [
+    "3rdparty/SOEM/soem/ethercat.h",
+    "--rust-edition",
+    "2024",
+    "--rust-target",
+    "1.85.0",
+    "-o",
+    "src/local/soem_bindings/win32.rs",
+    "--",
+    "-I3rdparty/SOEM/soem",
+    "-I3rdparty/SOEM/osal",
+    "-I3rdparty/SOEM/osal/win32/",
+    "-I3rdparty/SOEM/oshw/win32/",
+    "-I3rdparty/SOEM/oshw/win32/wpcap/Include/",
+]
+
+[tasks.bindgen-linux]
+command = "bindgen"
+args = [
+    "3rdparty/SOEM/soem/ethercat.h",
+    "--rust-edition",
+    "2024",
+    "--rust-target",
+    "1.85.0",
+    "-o",
+    "src/local/soem_bindings/linux.rs",
+    "--",
+    "-I3rdparty/SOEM/soem",
+    "-I3rdparty/SOEM/osal",
+    "-I3rdparty/SOEM/osal/linux/",
+    "-I3rdparty/SOEM/oshw/linux/",
+]
+
+[tasks.bindgen-macos]
+command = "bindgen"
+args = [
+    "3rdparty/SOEM/soem/ethercat.h",
+    "--rust-edition",
+    "2024",
+    "--rust-target",
+    "1.85.0",
+    "-o",
+    "src/local/soem_bindings/macos.rs",
+    "--",
+    "-I3rdparty/SOEM/soem",
+    "-I3rdparty/SOEM/osal",
+    "-I3rdparty/SOEM/osal/macosx/",
+    "-I3rdparty/SOEM/oshw/macosx/",
+]

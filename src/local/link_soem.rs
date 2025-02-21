@@ -1,15 +1,15 @@
 use std::{
-    ffi::{c_void, CString},
+    ffi::{CString, c_void},
     sync::{
-        atomic::{AtomicBool, AtomicI32, Ordering},
         Arc, Mutex,
+        atomic::{AtomicBool, AtomicI32, Ordering},
     },
     thread::JoinHandle,
     time::Duration,
 };
 
-use crossbeam_channel::{bounded, Receiver, Sender};
-use ta::{indicators::ExponentialMovingAverage, Next};
+use crossbeam_channel::{Receiver, Sender, bounded};
+use ta::{Next, indicators::ExponentialMovingAverage};
 use thread_priority::ThreadPriority;
 use time::ext::NumericalDuration;
 
@@ -22,6 +22,7 @@ use autd3_core::{
 };
 
 use super::{
+    Status, TimerStrategy,
     error::SOEMError,
     error_handler::EcatErrorHandler,
     ethernet_adapters::EthernetAdapters,
@@ -30,7 +31,6 @@ use super::{
     sleep::{Sleep, SpinSleep, SpinWait, StdSleep},
     soem_bindings::*,
     state::EcStatus,
-    Status, TimerStrategy,
 };
 
 struct SOEMInner {
@@ -274,20 +274,20 @@ impl SOEMInner {
         Ok(())
     }
 
-    fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
+    fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
         self.sender
             .send(tx.to_vec())
             .map_err(|_| LinkError::new("Link is closed.".to_owned()))?;
-        Ok(true)
+        Ok(())
     }
 
-    fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
+    fn receive(&mut self, rx: &mut [RxMessage]) -> Result<(), LinkError> {
         let io_map = self
             .io_map
             .lock()
             .map_err(|_| LinkError::new("Link is closed.".to_owned()))?;
         rx.copy_from_slice(io_map.input());
-        Ok(true)
+        Ok(())
     }
 
     fn is_autd3(i: i32) -> bool {
@@ -377,7 +377,7 @@ impl<F: Fn(usize, Status) + Send + Sync + 'static> SOEM<F> {
     }
 
     #[doc(hidden)]
-    pub fn num_devices() -> usize {
+    pub fn num_devices(&self) -> usize {
         unsafe { ec_slavecount as usize }
     }
 
@@ -403,16 +403,20 @@ impl<F: Fn(usize, Status) + Send + Sync + 'static> Link for SOEM<F> {
         self.inner.take().map_or(Ok(()), |mut inner| inner.close())
     }
 
-    fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
+    fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
         self.inner
             .as_mut()
-            .map_or(Ok(false), |inner| inner.send(tx))
+            .map_or(Err(LinkError::new("Link is closed")), |inner| {
+                inner.send(tx)
+            })
     }
 
-    fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
+    fn receive(&mut self, rx: &mut [RxMessage]) -> Result<(), LinkError> {
         self.inner
             .as_mut()
-            .map_or(Ok(false), |inner| inner.receive(rx))
+            .map_or(Err(LinkError::new("Link is closed")), |inner| {
+                inner.receive(rx)
+            })
     }
 
     fn is_open(&self) -> bool {
@@ -446,11 +450,13 @@ impl Drop for SOEMInitGuard {
 struct SOEMDCConfigGuard {}
 
 unsafe extern "C" fn po2so_config(context: *mut ecx_contextt, slave: uint16) -> i32 {
-    let cyc_time = ((*context).userdata as *mut Duration)
-        .as_ref()
-        .unwrap()
-        .as_nanos() as _;
-    ec_dcsync0(slave, 1, cyc_time, 0);
+    unsafe {
+        let cyc_time = ((*context).userdata as *mut Duration)
+            .as_ref()
+            .unwrap()
+            .as_nanos() as _;
+        ec_dcsync0(slave, 1, cyc_time, 0);
+    }
     0
 }
 
@@ -657,7 +663,9 @@ impl SOEMECatThreadGuard {
                 } else {
                     cnt_miss_deadline += 1;
                     if cnt_miss_deadline == 1000 {
-                        tracing::warn!("Slow network was detected. Increase send_cycle and sync0_cycle and restart the program, or reboot the network adapter and device.");
+                        tracing::warn!(
+                            "Slow network was detected. Increase send_cycle and sync0_cycle and restart the program, or reboot the network adapter and device."
+                        );
                         cnt_miss_deadline = 0;
                     }
                 }

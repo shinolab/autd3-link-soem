@@ -3,8 +3,8 @@
 // TODO: static mut will be deprecated in Rust 2024 edition?
 
 use std::sync::{
-    atomic::{AtomicBool, AtomicI32, Ordering},
     Arc,
+    atomic::{AtomicBool, AtomicI32, Ordering},
 };
 
 use crate::local::soem_bindings::*;
