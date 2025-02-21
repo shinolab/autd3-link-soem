@@ -773,11 +773,11 @@ impl<F: Fn(usize, Status) + Send + Sync + 'static> AsyncLink for SOEM<F> {
         <Self as Link>::close(self)
     }
 
-    async fn send(&mut self, tx: &[TxMessage]) -> Result<bool, LinkError> {
+    async fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
         <Self as Link>::send(self, tx)
     }
 
-    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<bool, LinkError> {
+    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<(), LinkError> {
         <Self as Link>::receive(self, rx)
     }
 
