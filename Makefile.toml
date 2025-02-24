@@ -78,7 +78,7 @@ args = [
     "-t",
     "${@}",
     "--excl-line",
-    "GRCOV_EXCL_LINE|#//[derive|#//[error|#//[bitfield_struct|unreachable!|unimplemented!|tracing::(debug|trace|info|warn|error)!//([//s//S]*//);",
+    "GRCOV_EXCL_LINE|#\\[derive|#\\[error|#\\[bitfield_struct|unreachable!|unimplemented!|tracing::(debug|trace|info|warn|error)!\\([\\s\\S]*\\);",
     "--keep-only",
     "src/**/*.rs",
     "--excl-start",
@@ -106,7 +106,7 @@ version = sys.argv[1]
 file = Path("Cargo.toml")
 content = file.read_text(encoding="utf-8")
 content = re.sub(r'^version = "(.*?)"', f'version = "{version}"', content, flags=re.MULTILINE)
-content = re.sub(r'^autd3(.*)version = "(.*?)"', f'autd3//1version = "{version}"', content, flags=re.MULTILINE)
+content = re.sub(r'^autd3(.*)version = "(.*?)"', f'autd3\\1version = "{version}"', content, flags=re.MULTILINE)
 file.write_text(content, encoding="utf-8")
 '''
 
