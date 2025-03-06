@@ -35,7 +35,7 @@ impl RemoteSOEMInner {
 
     async fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
         self.client
-            .send_data(tx.to_msg(None)?)
+            .send_data(TxRawData::from(tx))
             .await
             .map_err(AUTDProtoBufError::from)?;
         Ok(())
