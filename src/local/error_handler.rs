@@ -71,7 +71,7 @@ impl<F: Fn(usize, Status)> EcatErrorHandler<F> {
                             (self.err_handler)(i - 1, Status::StateChanged);
                             slave.state = ec_state_EC_STATE_OPERATIONAL as _;
                             ec_writestate(i as _);
-                        } else if slave.state > ec_state_EC_STATE_NONE as _ {
+                        } else if slave.state > ec_state_EC_STATE_NONE as u16 {
                             if ec_reconfig_slave(i as _, 500) != 0 {
                                 slave.islost = 0;
                             }
