@@ -91,7 +91,7 @@ impl SOEMInner {
 
             let wc = ec_config_init(0);
             tracing::info!("Found {} slaves.", wc);
-            if wc <= 0 || (geometry.len() != 0 && wc as usize != geometry.len()) {
+            if wc <= 0 || (!geometry.is_empty() && wc as usize != geometry.len()) {
                 return Err(SOEMError::SlaveNotFound(wc as _, geometry.len() as _).into());
             }
             (1..=wc).try_for_each(|i| {
