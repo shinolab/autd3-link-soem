@@ -300,7 +300,10 @@ impl SOEMInner {
                     .map(|c| c as u8)
                     .collect(),
             )
-            .map(|name| name == "AUTD")
+            .map(|name| {
+                tracing::trace!("Slave[{}] name: {}", i - 1, name);
+                name == "AUTD"
+            })
             .unwrap_or(false)
         }
     }
@@ -319,14 +322,17 @@ impl SOEMInner {
                 };
                 tracing::debug!("Searching AUTD device on {}.", adapter.name());
                 if ec_init(ifname.as_ptr()) <= 0 {
+                    tracing::trace!("Failed to initialize SOEM on {}.", adapter.name());
                     ec_close();
                     return false;
                 }
                 let wc = ec_config_init(0);
                 if wc <= 0 {
+                    tracing::trace!("No slave found on {}.", adapter.name());
                     ec_close();
                     return false;
                 }
+                tracing::trace!("Found {} slaves on {}.", wc, adapter.name());
                 let found = (1..=wc).all(Self::is_autd3);
                 ec_close();
                 found

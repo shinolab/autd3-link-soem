@@ -5,7 +5,7 @@ use autd3_link_soem::{SOEM, Status};
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
+        .with_max_level(tracing::Level::TRACE)
         .init();
 
     let mut autd = Controller::open(
