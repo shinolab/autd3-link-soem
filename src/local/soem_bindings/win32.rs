@@ -294,6 +294,7 @@ pub const _STL_LANG: u32 = 0;
 pub const _HAS_CXX17: u32 = 0;
 pub const _HAS_CXX20: u32 = 0;
 pub const _HAS_CXX23: u32 = 0;
+pub const _HAS_CXX26: u32 = 0;
 pub const _HAS_NODISCARD: u32 = 0;
 pub const EXCEPTION_EXECUTE_HANDLER: u32 = 1;
 pub const EXCEPTION_CONTINUE_SEARCH: u32 = 0;
@@ -78653,6 +78654,7 @@ pub type _bindgen_ty_2 = ::std::os::raw::c_int;
 pub const ECT_SII_MANUF: _bindgen_ty_3 = 8;
 pub const ECT_SII_ID: _bindgen_ty_3 = 10;
 pub const ECT_SII_REV: _bindgen_ty_3 = 12;
+pub const ECT_SII_SN: _bindgen_ty_3 = 14;
 pub const ECT_SII_BOOTRXMBX: _bindgen_ty_3 = 20;
 pub const ECT_SII_BOOTTXMBX: _bindgen_ty_3 = 22;
 pub const ECT_SII_MBXSIZE: _bindgen_ty_3 = 25;
@@ -85608,6 +85610,8 @@ pub struct ec_slave {
     pub eep_id: uint32,
     #[doc = " revision from EEprom"]
     pub eep_rev: uint32,
+    #[doc = " serial number from EEprom"]
+    pub eep_sn: uint32,
     #[doc = " Interface type"]
     pub Itype: uint16,
     #[doc = " Device type"]
@@ -85728,7 +85732,7 @@ pub struct ec_slave {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of ec_slave"][::std::mem::size_of::<ec_slave>() - 336usize];
+    ["Size of ec_slave"][::std::mem::size_of::<ec_slave>() - 344usize];
     ["Alignment of ec_slave"][::std::mem::align_of::<ec_slave>() - 8usize];
     ["Offset of field: ec_slave::state"][::std::mem::offset_of!(ec_slave, state) - 0usize];
     ["Offset of field: ec_slave::ALstatuscode"]
@@ -85738,83 +85742,84 @@ const _: () = {
     ["Offset of field: ec_slave::eep_man"][::std::mem::offset_of!(ec_slave, eep_man) - 8usize];
     ["Offset of field: ec_slave::eep_id"][::std::mem::offset_of!(ec_slave, eep_id) - 12usize];
     ["Offset of field: ec_slave::eep_rev"][::std::mem::offset_of!(ec_slave, eep_rev) - 16usize];
-    ["Offset of field: ec_slave::Itype"][::std::mem::offset_of!(ec_slave, Itype) - 20usize];
-    ["Offset of field: ec_slave::Dtype"][::std::mem::offset_of!(ec_slave, Dtype) - 22usize];
-    ["Offset of field: ec_slave::Obits"][::std::mem::offset_of!(ec_slave, Obits) - 24usize];
-    ["Offset of field: ec_slave::Obytes"][::std::mem::offset_of!(ec_slave, Obytes) - 28usize];
-    ["Offset of field: ec_slave::outputs"][::std::mem::offset_of!(ec_slave, outputs) - 32usize];
-    ["Offset of field: ec_slave::Ostartbit"][::std::mem::offset_of!(ec_slave, Ostartbit) - 40usize];
-    ["Offset of field: ec_slave::Ibits"][::std::mem::offset_of!(ec_slave, Ibits) - 42usize];
-    ["Offset of field: ec_slave::Ibytes"][::std::mem::offset_of!(ec_slave, Ibytes) - 44usize];
-    ["Offset of field: ec_slave::inputs"][::std::mem::offset_of!(ec_slave, inputs) - 48usize];
-    ["Offset of field: ec_slave::Istartbit"][::std::mem::offset_of!(ec_slave, Istartbit) - 56usize];
-    ["Offset of field: ec_slave::SM"][::std::mem::offset_of!(ec_slave, SM) - 57usize];
-    ["Offset of field: ec_slave::SMtype"][::std::mem::offset_of!(ec_slave, SMtype) - 121usize];
-    ["Offset of field: ec_slave::FMMU"][::std::mem::offset_of!(ec_slave, FMMU) - 129usize];
+    ["Offset of field: ec_slave::eep_sn"][::std::mem::offset_of!(ec_slave, eep_sn) - 20usize];
+    ["Offset of field: ec_slave::Itype"][::std::mem::offset_of!(ec_slave, Itype) - 24usize];
+    ["Offset of field: ec_slave::Dtype"][::std::mem::offset_of!(ec_slave, Dtype) - 26usize];
+    ["Offset of field: ec_slave::Obits"][::std::mem::offset_of!(ec_slave, Obits) - 28usize];
+    ["Offset of field: ec_slave::Obytes"][::std::mem::offset_of!(ec_slave, Obytes) - 32usize];
+    ["Offset of field: ec_slave::outputs"][::std::mem::offset_of!(ec_slave, outputs) - 40usize];
+    ["Offset of field: ec_slave::Ostartbit"][::std::mem::offset_of!(ec_slave, Ostartbit) - 48usize];
+    ["Offset of field: ec_slave::Ibits"][::std::mem::offset_of!(ec_slave, Ibits) - 50usize];
+    ["Offset of field: ec_slave::Ibytes"][::std::mem::offset_of!(ec_slave, Ibytes) - 52usize];
+    ["Offset of field: ec_slave::inputs"][::std::mem::offset_of!(ec_slave, inputs) - 56usize];
+    ["Offset of field: ec_slave::Istartbit"][::std::mem::offset_of!(ec_slave, Istartbit) - 64usize];
+    ["Offset of field: ec_slave::SM"][::std::mem::offset_of!(ec_slave, SM) - 65usize];
+    ["Offset of field: ec_slave::SMtype"][::std::mem::offset_of!(ec_slave, SMtype) - 129usize];
+    ["Offset of field: ec_slave::FMMU"][::std::mem::offset_of!(ec_slave, FMMU) - 137usize];
     ["Offset of field: ec_slave::FMMU0func"]
-        [::std::mem::offset_of!(ec_slave, FMMU0func) - 193usize];
+        [::std::mem::offset_of!(ec_slave, FMMU0func) - 201usize];
     ["Offset of field: ec_slave::FMMU1func"]
-        [::std::mem::offset_of!(ec_slave, FMMU1func) - 194usize];
+        [::std::mem::offset_of!(ec_slave, FMMU1func) - 202usize];
     ["Offset of field: ec_slave::FMMU2func"]
-        [::std::mem::offset_of!(ec_slave, FMMU2func) - 195usize];
+        [::std::mem::offset_of!(ec_slave, FMMU2func) - 203usize];
     ["Offset of field: ec_slave::FMMU3func"]
-        [::std::mem::offset_of!(ec_slave, FMMU3func) - 196usize];
-    ["Offset of field: ec_slave::mbx_l"][::std::mem::offset_of!(ec_slave, mbx_l) - 198usize];
-    ["Offset of field: ec_slave::mbx_wo"][::std::mem::offset_of!(ec_slave, mbx_wo) - 200usize];
-    ["Offset of field: ec_slave::mbx_rl"][::std::mem::offset_of!(ec_slave, mbx_rl) - 202usize];
-    ["Offset of field: ec_slave::mbx_ro"][::std::mem::offset_of!(ec_slave, mbx_ro) - 204usize];
+        [::std::mem::offset_of!(ec_slave, FMMU3func) - 204usize];
+    ["Offset of field: ec_slave::mbx_l"][::std::mem::offset_of!(ec_slave, mbx_l) - 206usize];
+    ["Offset of field: ec_slave::mbx_wo"][::std::mem::offset_of!(ec_slave, mbx_wo) - 208usize];
+    ["Offset of field: ec_slave::mbx_rl"][::std::mem::offset_of!(ec_slave, mbx_rl) - 210usize];
+    ["Offset of field: ec_slave::mbx_ro"][::std::mem::offset_of!(ec_slave, mbx_ro) - 212usize];
     ["Offset of field: ec_slave::mbx_proto"]
-        [::std::mem::offset_of!(ec_slave, mbx_proto) - 206usize];
-    ["Offset of field: ec_slave::mbx_cnt"][::std::mem::offset_of!(ec_slave, mbx_cnt) - 208usize];
-    ["Offset of field: ec_slave::hasdc"][::std::mem::offset_of!(ec_slave, hasdc) - 209usize];
-    ["Offset of field: ec_slave::ptype"][::std::mem::offset_of!(ec_slave, ptype) - 210usize];
-    ["Offset of field: ec_slave::topology"][::std::mem::offset_of!(ec_slave, topology) - 211usize];
+        [::std::mem::offset_of!(ec_slave, mbx_proto) - 214usize];
+    ["Offset of field: ec_slave::mbx_cnt"][::std::mem::offset_of!(ec_slave, mbx_cnt) - 216usize];
+    ["Offset of field: ec_slave::hasdc"][::std::mem::offset_of!(ec_slave, hasdc) - 217usize];
+    ["Offset of field: ec_slave::ptype"][::std::mem::offset_of!(ec_slave, ptype) - 218usize];
+    ["Offset of field: ec_slave::topology"][::std::mem::offset_of!(ec_slave, topology) - 219usize];
     ["Offset of field: ec_slave::activeports"]
-        [::std::mem::offset_of!(ec_slave, activeports) - 212usize];
+        [::std::mem::offset_of!(ec_slave, activeports) - 220usize];
     ["Offset of field: ec_slave::consumedports"]
-        [::std::mem::offset_of!(ec_slave, consumedports) - 213usize];
-    ["Offset of field: ec_slave::parent"][::std::mem::offset_of!(ec_slave, parent) - 214usize];
+        [::std::mem::offset_of!(ec_slave, consumedports) - 221usize];
+    ["Offset of field: ec_slave::parent"][::std::mem::offset_of!(ec_slave, parent) - 222usize];
     ["Offset of field: ec_slave::parentport"]
-        [::std::mem::offset_of!(ec_slave, parentport) - 216usize];
+        [::std::mem::offset_of!(ec_slave, parentport) - 224usize];
     ["Offset of field: ec_slave::entryport"]
-        [::std::mem::offset_of!(ec_slave, entryport) - 217usize];
-    ["Offset of field: ec_slave::DCrtA"][::std::mem::offset_of!(ec_slave, DCrtA) - 220usize];
-    ["Offset of field: ec_slave::DCrtB"][::std::mem::offset_of!(ec_slave, DCrtB) - 224usize];
-    ["Offset of field: ec_slave::DCrtC"][::std::mem::offset_of!(ec_slave, DCrtC) - 228usize];
-    ["Offset of field: ec_slave::DCrtD"][::std::mem::offset_of!(ec_slave, DCrtD) - 232usize];
-    ["Offset of field: ec_slave::pdelay"][::std::mem::offset_of!(ec_slave, pdelay) - 236usize];
-    ["Offset of field: ec_slave::DCnext"][::std::mem::offset_of!(ec_slave, DCnext) - 240usize];
+        [::std::mem::offset_of!(ec_slave, entryport) - 225usize];
+    ["Offset of field: ec_slave::DCrtA"][::std::mem::offset_of!(ec_slave, DCrtA) - 228usize];
+    ["Offset of field: ec_slave::DCrtB"][::std::mem::offset_of!(ec_slave, DCrtB) - 232usize];
+    ["Offset of field: ec_slave::DCrtC"][::std::mem::offset_of!(ec_slave, DCrtC) - 236usize];
+    ["Offset of field: ec_slave::DCrtD"][::std::mem::offset_of!(ec_slave, DCrtD) - 240usize];
+    ["Offset of field: ec_slave::pdelay"][::std::mem::offset_of!(ec_slave, pdelay) - 244usize];
+    ["Offset of field: ec_slave::DCnext"][::std::mem::offset_of!(ec_slave, DCnext) - 248usize];
     ["Offset of field: ec_slave::DCprevious"]
-        [::std::mem::offset_of!(ec_slave, DCprevious) - 242usize];
-    ["Offset of field: ec_slave::DCcycle"][::std::mem::offset_of!(ec_slave, DCcycle) - 244usize];
-    ["Offset of field: ec_slave::DCshift"][::std::mem::offset_of!(ec_slave, DCshift) - 248usize];
-    ["Offset of field: ec_slave::DCactive"][::std::mem::offset_of!(ec_slave, DCactive) - 252usize];
+        [::std::mem::offset_of!(ec_slave, DCprevious) - 250usize];
+    ["Offset of field: ec_slave::DCcycle"][::std::mem::offset_of!(ec_slave, DCcycle) - 252usize];
+    ["Offset of field: ec_slave::DCshift"][::std::mem::offset_of!(ec_slave, DCshift) - 256usize];
+    ["Offset of field: ec_slave::DCactive"][::std::mem::offset_of!(ec_slave, DCactive) - 260usize];
     ["Offset of field: ec_slave::configindex"]
-        [::std::mem::offset_of!(ec_slave, configindex) - 254usize];
-    ["Offset of field: ec_slave::SIIindex"][::std::mem::offset_of!(ec_slave, SIIindex) - 256usize];
+        [::std::mem::offset_of!(ec_slave, configindex) - 262usize];
+    ["Offset of field: ec_slave::SIIindex"][::std::mem::offset_of!(ec_slave, SIIindex) - 264usize];
     ["Offset of field: ec_slave::eep_8byte"]
-        [::std::mem::offset_of!(ec_slave, eep_8byte) - 258usize];
-    ["Offset of field: ec_slave::eep_pdi"][::std::mem::offset_of!(ec_slave, eep_pdi) - 259usize];
+        [::std::mem::offset_of!(ec_slave, eep_8byte) - 266usize];
+    ["Offset of field: ec_slave::eep_pdi"][::std::mem::offset_of!(ec_slave, eep_pdi) - 267usize];
     ["Offset of field: ec_slave::CoEdetails"]
-        [::std::mem::offset_of!(ec_slave, CoEdetails) - 260usize];
+        [::std::mem::offset_of!(ec_slave, CoEdetails) - 268usize];
     ["Offset of field: ec_slave::FoEdetails"]
-        [::std::mem::offset_of!(ec_slave, FoEdetails) - 261usize];
+        [::std::mem::offset_of!(ec_slave, FoEdetails) - 269usize];
     ["Offset of field: ec_slave::EoEdetails"]
-        [::std::mem::offset_of!(ec_slave, EoEdetails) - 262usize];
+        [::std::mem::offset_of!(ec_slave, EoEdetails) - 270usize];
     ["Offset of field: ec_slave::SoEdetails"]
-        [::std::mem::offset_of!(ec_slave, SoEdetails) - 263usize];
+        [::std::mem::offset_of!(ec_slave, SoEdetails) - 271usize];
     ["Offset of field: ec_slave::Ebuscurrent"]
-        [::std::mem::offset_of!(ec_slave, Ebuscurrent) - 264usize];
-    ["Offset of field: ec_slave::blockLRW"][::std::mem::offset_of!(ec_slave, blockLRW) - 266usize];
-    ["Offset of field: ec_slave::group"][::std::mem::offset_of!(ec_slave, group) - 267usize];
+        [::std::mem::offset_of!(ec_slave, Ebuscurrent) - 272usize];
+    ["Offset of field: ec_slave::blockLRW"][::std::mem::offset_of!(ec_slave, blockLRW) - 274usize];
+    ["Offset of field: ec_slave::group"][::std::mem::offset_of!(ec_slave, group) - 275usize];
     ["Offset of field: ec_slave::FMMUunused"]
-        [::std::mem::offset_of!(ec_slave, FMMUunused) - 268usize];
-    ["Offset of field: ec_slave::islost"][::std::mem::offset_of!(ec_slave, islost) - 269usize];
+        [::std::mem::offset_of!(ec_slave, FMMUunused) - 276usize];
+    ["Offset of field: ec_slave::islost"][::std::mem::offset_of!(ec_slave, islost) - 277usize];
     ["Offset of field: ec_slave::PO2SOconfig"]
-        [::std::mem::offset_of!(ec_slave, PO2SOconfig) - 272usize];
+        [::std::mem::offset_of!(ec_slave, PO2SOconfig) - 280usize];
     ["Offset of field: ec_slave::PO2SOconfigx"]
-        [::std::mem::offset_of!(ec_slave, PO2SOconfigx) - 280usize];
-    ["Offset of field: ec_slave::name"][::std::mem::offset_of!(ec_slave, name) - 288usize];
+        [::std::mem::offset_of!(ec_slave, PO2SOconfigx) - 288usize];
+    ["Offset of field: ec_slave::name"][::std::mem::offset_of!(ec_slave, name) - 296usize];
 };
 #[doc = " for list of ethercat slaves detected"]
 pub type ec_slavet = ec_slave;
