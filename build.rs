@@ -1,5 +1,7 @@
 #[cfg(feature = "local")]
 fn main() -> anyhow::Result<()> {
+    println!("cargo:rerun-if-changed=3rdparty/SOEM");
+
     #[cfg(target_os = "windows")]
     let target = std::env::var("TARGET").unwrap();
 
