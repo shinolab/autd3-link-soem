@@ -46,7 +46,7 @@ mod tests {
         let mut iomap = IOMap::new(1);
         let mut tx = vec![TxMessage::new_zeroed(); 1];
         let payload_size = tx[0].payload().len();
-        tx[0].header.msg_id = 0x01;
+        tx[0].header.msg_id = autd3_core::link::MsgId::new(0x01);
         tx[0].header.slot_2_offset = 0x0302;
         tx[0].payload_mut()[0] = 0x04;
         tx[0].payload_mut()[payload_size - 1] = 5;

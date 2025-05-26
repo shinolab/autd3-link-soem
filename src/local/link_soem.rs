@@ -12,6 +12,7 @@ use crossbeam_channel::{Receiver, Sender, bounded};
 use ta::{Next, indicators::ExponentialMovingAverage};
 use thread_priority::ThreadPriority;
 use time::ext::NumericalDuration;
+use zerocopy::FromZeros;
 
 use crate::local::sync_mode::SyncMode;
 
@@ -34,7 +35,8 @@ use super::{
 };
 
 struct SOEMInner {
-    sender: Sender<Vec<TxMessage>>,
+    send_queue: Sender<Vec<TxMessage>>,
+    buffer_queue: Receiver<Vec<TxMessage>>,
     is_open: Arc<AtomicBool>,
     send_cycle: Duration,
     io_map: Arc<Mutex<IOMap>>,
@@ -104,7 +106,14 @@ impl SOEMInner {
             })?;
             let num_devices = wc as _;
 
-            let (tx_sender, tx_receiver) = bounded(buf_size.get());
+            let (send_queue_sender, send_queue_receiver) = bounded(buf_size.get());
+            let (buffer_queue_sender, buffer_queue_receiver) = bounded(buf_size.get());
+            (0..buf_size.get()).for_each(|_| {
+                buffer_queue_sender
+                    .send(vec![TxMessage::new_zeroed(); num_devices])
+                    .unwrap()
+            });
+
             let is_open = Arc::new(AtomicBool::new(true));
             let io_map = Arc::new(Mutex::new(IOMap::new(num_devices)));
             let config_dc_guard = SOEMDCConfigGuard::new(sync0_cycle);
@@ -193,7 +202,8 @@ impl SOEMInner {
             }
 
             let mut result = Self {
-                sender: tx_sender,
+                send_queue: send_queue_sender,
+                buffer_queue: buffer_queue_receiver,
                 is_open,
                 send_cycle,
                 io_map,
@@ -223,7 +233,8 @@ impl SOEMInner {
                 result.is_open.clone(),
                 wkc.clone(),
                 result.io_map.clone(),
-                tx_receiver,
+                buffer_queue_sender,
+                send_queue_receiver,
                 timer_strategy,
                 thread_priority,
                 #[cfg(target_os = "windows")]
@@ -261,7 +272,7 @@ impl SOEMInner {
         }
         self.is_open.store(false, Ordering::Release);
 
-        while !self.sender.is_empty() {
+        while !self.send_queue.is_empty() {
             std::thread::sleep(self.send_cycle);
         }
 
@@ -274,18 +285,17 @@ impl SOEMInner {
         Ok(())
     }
 
-    fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
-        self.sender
-            .send(tx.to_vec())
-            .map_err(|_| LinkError::new("Link is closed.".to_owned()))?;
+    fn alloc_tx_buffer(&mut self) -> Result<Vec<TxMessage>, LinkError> {
+        self.buffer_queue.recv().map_err(|_| LinkError::closed())
+    }
+
+    fn send(&mut self, tx: Vec<TxMessage>) -> Result<(), LinkError> {
+        self.send_queue.send(tx).map_err(|_| LinkError::closed())?;
         Ok(())
     }
 
     fn receive(&mut self, rx: &mut [RxMessage]) -> Result<(), LinkError> {
-        let io_map = self
-            .io_map
-            .lock()
-            .map_err(|_| LinkError::new("Link is closed.".to_owned()))?;
+        let io_map = self.io_map.lock().map_err(|_| LinkError::closed())?;
         rx.copy_from_slice(io_map.input());
         Ok(())
     }
@@ -346,7 +356,7 @@ impl SOEMInner {
     pub fn clear_iomap(
         &mut self,
     ) -> Result<(), std::sync::PoisonError<std::sync::MutexGuard<'_, IOMap>>> {
-        while !self.sender.is_empty() {
+        while !self.send_queue.is_empty() {
             std::thread::sleep(Duration::from_millis(100));
         }
         self.io_map.lock()?.clear();
@@ -409,7 +419,15 @@ impl<F: Fn(usize, Status) + Send + Sync + 'static> Link for SOEM<F> {
         self.inner.take().map_or(Ok(()), |mut inner| inner.close())
     }
 
-    fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
+    fn alloc_tx_buffer(&mut self) -> Result<Vec<TxMessage>, LinkError> {
+        self.inner
+            .as_mut()
+            .map_or(Err(LinkError::new("Link is closed")), |inner| {
+                inner.alloc_tx_buffer()
+            })
+    }
+
+    fn send(&mut self, tx: Vec<TxMessage>) -> Result<(), LinkError> {
         self.inner
             .as_mut()
             .map_or(Err(LinkError::new("Link is closed")), |inner| {
@@ -563,12 +581,13 @@ struct SOEMECatThreadGuard {
 }
 
 impl SOEMECatThreadGuard {
-    #[cfg_attr(target_os = "windows", allow(clippy::too_many_arguments))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         is_open: Arc<AtomicBool>,
         wkc: Arc<AtomicI32>,
         io_map: Arc<Mutex<IOMap>>,
-        tx_receiver: Receiver<Vec<TxMessage>>,
+        buffer_queue_sender: Sender<Vec<TxMessage>>,
+        send_queue_receiver: Receiver<Vec<TxMessage>>,
         timer_strategy: TimerStrategy,
         thread_priority: ThreadPriority,
         #[cfg(target_os = "windows")] process_priority: super::ProcessPriority,
@@ -581,7 +600,8 @@ impl SOEMECatThreadGuard {
                         is_open,
                         io_map,
                         wkc,
-                        tx_receiver,
+                        buffer_queue_sender,
+                        send_queue_receiver,
                         ec_send_cycle,
                         thread_priority,
                         #[cfg(target_os = "windows")]
@@ -593,7 +613,8 @@ impl SOEMECatThreadGuard {
                         is_open,
                         io_map,
                         wkc,
-                        tx_receiver,
+                        buffer_queue_sender,
+                        send_queue_receiver,
                         ec_send_cycle,
                         thread_priority,
                         #[cfg(target_os = "windows")]
@@ -605,7 +626,8 @@ impl SOEMECatThreadGuard {
                         is_open,
                         io_map,
                         wkc,
-                        tx_receiver,
+                        buffer_queue_sender,
+                        send_queue_receiver,
                         ec_send_cycle,
                         thread_priority,
                         #[cfg(target_os = "windows")]
@@ -616,10 +638,12 @@ impl SOEMECatThreadGuard {
         }
     }
 
+    #[cfg_attr(target_os = "windows", allow(clippy::too_many_arguments))]
     fn ecat_run<S: Sleep>(
         is_open: Arc<AtomicBool>,
         io_map: Arc<Mutex<IOMap>>,
         wkc: Arc<AtomicI32>,
+        buffer_queue_sender: Sender<Vec<TxMessage>>,
         receiver: Receiver<Vec<TxMessage>>,
         cycle: Duration,
         thread_priority: ThreadPriority,
@@ -691,6 +715,7 @@ impl SOEMECatThreadGuard {
                             break;
                         }
                     }
+                    let _ = buffer_queue_sender.send(tx);
                 }
                 ec_send_processdata();
             }
@@ -779,7 +804,11 @@ impl<F: Fn(usize, Status) + Send + Sync + 'static> AsyncLink for SOEM<F> {
         <Self as Link>::close(self)
     }
 
-    async fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
+    async fn alloc_tx_buffer(&mut self) -> Result<Vec<TxMessage>, LinkError> {
+        <Self as Link>::alloc_tx_buffer(self)
+    }
+
+    async fn send(&mut self, tx: Vec<TxMessage>) -> Result<(), LinkError> {
         <Self as Link>::send(self, tx)
     }
 
