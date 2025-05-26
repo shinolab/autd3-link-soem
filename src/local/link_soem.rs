@@ -73,9 +73,6 @@ impl SOEMInner {
             {
                 return Err(SOEMError::InvalidCycle(sync0_cycle).into());
             }
-            if send_cycle.is_zero() || send_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0 {
-                return Err(SOEMError::InvalidCycle(send_cycle).into());
-            }
 
             let ifname = if ifname.is_empty() {
                 tracing::info!("No interface name is specified. Looking up AUTD device.");
