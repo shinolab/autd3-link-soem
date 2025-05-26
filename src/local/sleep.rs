@@ -1,4 +1,4 @@
-use autd3_core::utils::timer::TimerResolutionGurad;
+use autd3_core::utils::timer::TimerResolutionGuard;
 use std::{num::NonZeroU32, time::Duration};
 
 pub(crate) trait Sleep {
@@ -9,7 +9,7 @@ pub(crate) struct StdSleep {}
 
 impl Sleep for StdSleep {
     fn sleep(duration: Duration) {
-        let _timer_guard = TimerResolutionGurad::new(Some(NonZeroU32::MIN));
+        let _timer_guard = TimerResolutionGuard::new(Some(NonZeroU32::MIN));
         std::thread::sleep(duration);
     }
 }

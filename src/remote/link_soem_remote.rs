@@ -2,12 +2,13 @@ use std::net::SocketAddr;
 
 use autd3_core::{
     geometry::Geometry,
-    link::{AsyncLink, LinkError, RxMessage, TxMessage},
+    link::{AsyncLink, LinkError, RxMessage, TxBufferPoolSync, TxMessage},
 };
 use autd3_protobuf::*;
 
 pub struct RemoteSOEMInner {
     client: ecat_client::EcatClient<tonic::transport::Channel>,
+    buffer_pool: TxBufferPoolSync,
 }
 
 impl RemoteSOEMInner {
@@ -22,6 +23,7 @@ impl RemoteSOEMInner {
 
         Ok(Self {
             client: ecat_client::EcatClient::new(conn),
+            buffer_pool: TxBufferPoolSync::new(),
         })
     }
 
@@ -33,9 +35,15 @@ impl RemoteSOEMInner {
         Ok(())
     }
 
-    async fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
+    async fn alloc_tx_buffer(&mut self) -> Result<Vec<TxMessage>, LinkError> {
+        Ok(self.buffer_pool.borrow())
+    }
+
+    async fn send(&mut self, tx: Vec<TxMessage>) -> Result<(), LinkError> {
+        let tx_data = TxRawData::from(tx.as_slice());
+        self.buffer_pool.return_buffer(tx);
         self.client
-            .send_data(TxRawData::from(tx))
+            .send_data(tx_data)
             .await
             .map_err(AUTDProtoBufError::from)?;
         Ok(())
@@ -93,11 +101,19 @@ impl AsyncLink for RemoteSOEM {
         Ok(())
     }
 
-    async fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
+    async fn alloc_tx_buffer(&mut self) -> Result<Vec<TxMessage>, LinkError> {
+        if let Some(inner) = self.inner.as_mut() {
+            inner.alloc_tx_buffer().await
+        } else {
+            Err(LinkError::closed())
+        }
+    }
+
+    async fn send(&mut self, tx: Vec<TxMessage>) -> Result<(), LinkError> {
         if let Some(inner) = self.inner.as_mut() {
             inner.send(tx).await
         } else {
-            Err(LinkError::new("Link is closed.".to_owned()))
+            Err(LinkError::closed())
         }
     }
 
@@ -105,7 +121,7 @@ impl AsyncLink for RemoteSOEM {
         if let Some(inner) = self.inner.as_mut() {
             inner.receive(rx).await
         } else {
-            Err(LinkError::new("Link is closed.".to_owned()))
+            Err(LinkError::closed())
         }
     }
 
@@ -140,39 +156,49 @@ impl Link for RemoteSOEM {
         })
     }
 
-    fn send(&mut self, tx: &[TxMessage]) -> Result<(), LinkError> {
-        self.runtime.as_ref().map_or(
-            Err(LinkError::new("Link is closed.".to_owned())),
-            |runtime| {
+    fn send(&mut self, tx: Vec<TxMessage>) -> Result<(), LinkError> {
+        self.runtime
+            .as_ref()
+            .map_or(Err(LinkError::closed()), |runtime| {
                 runtime.block_on(async {
                     if let Some(inner) = self.inner.as_mut() {
-                        inner.send(tx).await?;
-                        Ok(())
+                        inner.send(tx).await
                     } else {
-                        Err(LinkError::new("Link is closed.".to_owned()))
+                        Err(LinkError::closed())
                     }
                 })
-            },
-        )
+            })
     }
 
     fn receive(&mut self, rx: &mut [RxMessage]) -> Result<(), LinkError> {
-        self.runtime.as_ref().map_or(
-            Err(LinkError::new("Link is closed.".to_owned())),
-            |runtime| {
+        self.runtime
+            .as_ref()
+            .map_or(Err(LinkError::closed()), |runtime| {
                 runtime.block_on(async {
                     if let Some(inner) = self.inner.as_mut() {
-                        inner.receive(rx).await?;
-                        Ok(())
+                        inner.receive(rx).await
                     } else {
-                        Err(LinkError::new("Link is closed.".to_owned()))
+                        Err(LinkError::closed())
                     }
                 })
-            },
-        )
+            })
     }
 
     fn is_open(&self) -> bool {
         self.runtime.is_some() && self.inner.is_some()
+    }
+
+    fn alloc_tx_buffer(&mut self) -> Result<Vec<TxMessage>, LinkError> {
+        self.runtime
+            .as_ref()
+            .map_or(Err(LinkError::closed()), |runtime| {
+                runtime.block_on(async {
+                    if let Some(inner) = self.inner.as_mut() {
+                        inner.alloc_tx_buffer().await
+                    } else {
+                        Err(LinkError::closed())
+                    }
+                })
+            })
     }
 }
