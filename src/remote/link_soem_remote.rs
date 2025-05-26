@@ -12,7 +12,7 @@ pub struct RemoteSOEMInner {
 }
 
 impl RemoteSOEMInner {
-    async fn open(addr: &SocketAddr) -> Result<Self, LinkError> {
+    async fn open(addr: &SocketAddr, geometry: &Geometry) -> Result<Self, LinkError> {
         tracing::info!("Connecting to remote SOEM server@{}", addr);
 
         let conn = tonic::transport::Endpoint::new(format!("http://{}", addr))
@@ -21,9 +21,12 @@ impl RemoteSOEMInner {
             .await
             .map_err(AUTDProtoBufError::from)?;
 
+        let mut buffer_pool = TxBufferPoolSync::new();
+        buffer_pool.init(geometry);
+
         Ok(Self {
             client: ecat_client::EcatClient::new(conn),
-            buffer_pool: TxBufferPoolSync::new(),
+            buffer_pool,
         })
     }
 
@@ -89,8 +92,8 @@ impl RemoteSOEM {
 
 #[cfg_attr(feature = "async-trait", autd3_core::async_trait)]
 impl AsyncLink for RemoteSOEM {
-    async fn open(&mut self, _: &Geometry) -> Result<(), LinkError> {
-        self.inner = Some(RemoteSOEMInner::open(&self.addr).await?);
+    async fn open(&mut self, geometry: &Geometry) -> Result<(), LinkError> {
+        self.inner = Some(RemoteSOEMInner::open(&self.addr, geometry).await?);
         Ok(())
     }
 
