@@ -16,6 +16,7 @@ pub use ethernet_adapters::EthernetAdapters;
 pub use link_soem::SOEM;
 pub use option::SOEMOption;
 pub use process_priority::ProcessPriority;
+#[allow(deprecated)]
 pub use sync_mode::SyncMode;
 pub use thread_priority::{ThreadPriority, ThreadPriorityValue};
 pub use timer_strategy::TimerStrategy;

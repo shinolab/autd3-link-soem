@@ -14,8 +14,6 @@ use thread_priority::ThreadPriority;
 use time::ext::NumericalDuration;
 use zerocopy::FromZeros;
 
-use crate::local::sync_mode::SyncMode;
-
 use autd3_core::{
     ethercat::EC_CYCLE_TIME_BASE,
     geometry::Geometry,
@@ -59,7 +57,6 @@ impl SOEMInner {
             let SOEMOption {
                 buf_size,
                 timer_strategy,
-                sync_mode,
                 ifname,
                 state_check_interval,
                 sync0_cycle,
@@ -69,6 +66,7 @@ impl SOEMInner {
                 process_priority,
                 sync_tolerance,
                 sync_timeout,
+                ..
             } = option;
 
             if sync0_cycle.is_zero() || sync0_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0
@@ -118,10 +116,8 @@ impl SOEMInner {
             let io_map = Arc::new(Mutex::new(IOMap::new(num_devices)));
             let config_dc_guard = SOEMDCConfigGuard::new(sync0_cycle);
 
-            if sync_mode == SyncMode::DC {
-                tracing::info!("Configuring Sync0 with cycle time {:?}.", sync0_cycle);
-                config_dc_guard.set_dc_config();
-            }
+            tracing::info!("Configuring Sync0 with cycle time {:?}.", sync0_cycle);
+            config_dc_guard.set_dc_config();
 
             tracing::info!("Waiting for synchronization.");
             let (tx, rx) = bounded(1);
@@ -244,11 +240,6 @@ impl SOEMInner {
 
             if !OpStateGuard::is_op_state() {
                 return Err(SOEMError::NotResponding(EcStatus::new(num_devices)).into());
-            }
-
-            if sync_mode == SyncMode::FreeRun {
-                tracing::info!("Configuring Sync0 with cycle time {:?}.", sync0_cycle);
-                result.config_dc_guard.as_mut().unwrap().dc_config();
             }
 
             tracing::info!(
@@ -497,18 +488,6 @@ impl SOEMDCConfigGuard {
         unsafe {
             (1..=ec_slavecount as usize).for_each(|i| {
                 ec_slave[i].PO2SOconfigx = Some(po2so_config);
-            });
-        }
-    }
-
-    fn dc_config(&self) {
-        unsafe {
-            let cyc_time = (ecx_context.userdata as *mut Duration)
-                .as_ref()
-                .unwrap()
-                .as_nanos() as _;
-            (1..=ec_slavecount as u16).for_each(|i| {
-                ec_dcsync0(i, 1, cyc_time, 0);
             });
         }
     }

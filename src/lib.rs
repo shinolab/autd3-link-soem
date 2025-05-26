@@ -12,11 +12,13 @@ pub mod local;
 #[cfg_attr(docsrs, doc(cfg(all(feature = "local", target_os = "windows"))))]
 #[cfg(all(feature = "local", target_os = "windows"))]
 pub use local::ProcessPriority;
+#[allow(deprecated)]
+#[cfg(feature = "local")]
+pub use local::SyncMode;
 #[cfg_attr(docsrs, doc(cfg(feature = "local")))]
 #[cfg(feature = "local")]
 pub use local::{
-    EthernetAdapters, SOEM, SOEMOption, Status, SyncMode, ThreadPriority, ThreadPriorityValue,
-    TimerStrategy,
+    EthernetAdapters, SOEM, SOEMOption, Status, ThreadPriority, ThreadPriorityValue, TimerStrategy,
 };
 
 #[cfg_attr(docsrs, doc(cfg(feature = "remote")))]

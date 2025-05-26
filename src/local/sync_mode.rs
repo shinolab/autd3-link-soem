@@ -1,6 +1,5 @@
-/// Synchronization mode.
-///
-/// See [Synchronization modes of an EtherCAT slave](https://infosys.beckhoff.com/english.php?content=../content/1033/ethercatsystem/2469118347.html&id=) for more information.
+/// Deprecated: This option is no longer used and has no effect.
+#[deprecated(since = "33.1.0", note = "This setting no longer has any effect")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u8)]
