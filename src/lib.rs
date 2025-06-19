@@ -14,10 +14,7 @@ pub mod local;
 pub use local::ProcessPriority;
 #[cfg_attr(docsrs, doc(cfg(feature = "local")))]
 #[cfg(feature = "local")]
-pub use local::{
-    EthernetAdapters, SOEM, SOEMOption, Status, SyncMode, ThreadPriority, ThreadPriorityValue,
-    TimerStrategy,
-};
+pub use local::{EthernetAdapters, SOEM, SOEMOption, Status, ThreadPriority, ThreadPriorityValue};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "remote")))]
 #[cfg(feature = "remote")]
