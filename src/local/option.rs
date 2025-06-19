@@ -1,7 +1,5 @@
 use std::{num::NonZeroUsize, time::Duration};
 
-use super::{sync_mode::SyncMode, timer_strategy::TimerStrategy};
-
 use autd3_core::ethercat::EC_CYCLE_TIME_BASE;
 
 use derive_more::Debug;
@@ -15,10 +13,6 @@ use thread_priority::ThreadPriority;
 pub struct SOEMOption {
     /// The size of the send queue buffer. The default is 32.
     pub buf_size: NonZeroUsize,
-    /// The timer strategy. The default is [`TimerStrategy::SpinSleep`].
-    pub timer_strategy: TimerStrategy,
-    /// The synchronization mode. The default is [`SyncMode::DC`].
-    pub sync_mode: SyncMode,
     /// The network interface name. If this is empty, the network interface will be automatically selected to which the AUTD3 device is connected. The default is empty.
     pub ifname: String,
     /// The interval to check the state. The default is 100ms.
@@ -42,8 +36,6 @@ impl Default for SOEMOption {
     fn default() -> Self {
         Self {
             buf_size: NonZeroUsize::new(32).unwrap(),
-            timer_strategy: TimerStrategy::SpinSleep,
-            sync_mode: SyncMode::DC,
             ifname: String::new(),
             state_check_interval: Duration::from_millis(100),
             sync0_cycle: EC_CYCLE_TIME_BASE * 2,
