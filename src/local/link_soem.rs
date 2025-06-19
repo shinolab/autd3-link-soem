@@ -9,29 +9,22 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, Sender, bounded};
+use spin_sleep::SpinSleeper;
 use ta::{Next, indicators::ExponentialMovingAverage};
 use thread_priority::ThreadPriority;
 use time::ext::NumericalDuration;
 use zerocopy::FromZeros;
 
-use crate::local::sync_mode::SyncMode;
-
 use autd3_core::{
     ethercat::EC_CYCLE_TIME_BASE,
     geometry::Geometry,
     link::{Link, LinkError, RxMessage, TxMessage},
+    sleep::Sleep,
 };
 
 use super::{
-    Status, TimerStrategy,
-    error::SOEMError,
-    error_handler::EcatErrorHandler,
-    ethernet_adapters::EthernetAdapters,
-    iomap::IOMap,
-    option::SOEMOption,
-    sleep::{Sleep, SpinSleep, SpinWait, StdSleep},
-    soem_bindings::*,
-    state::EcStatus,
+    Status, error::SOEMError, error_handler::EcatErrorHandler, ethernet_adapters::EthernetAdapters,
+    iomap::IOMap, option::SOEMOption, soem_bindings::*, state::EcStatus,
 };
 
 struct SOEMInner {
@@ -48,18 +41,20 @@ struct SOEMInner {
 }
 
 impl SOEMInner {
-    pub(crate) fn open<F: Fn(usize, Status) + Send + Sync + 'static>(
+    pub(crate) fn open_with_sleeper<
+        F: Fn(usize, Status) + Send + Sync + 'static,
+        S: Sleep + Send + 'static,
+    >(
         err_handler: F,
         option: SOEMOption,
         geometry: &Geometry,
+        sleeper: S,
     ) -> Result<Self, LinkError> {
         tracing::debug!("Opening SOEM link: {:?}", option);
 
         unsafe {
             let SOEMOption {
                 buf_size,
-                timer_strategy,
-                sync_mode,
                 ifname,
                 state_check_interval,
                 sync0_cycle,
@@ -118,10 +113,8 @@ impl SOEMInner {
             let io_map = Arc::new(Mutex::new(IOMap::new(num_devices)));
             let config_dc_guard = SOEMDCConfigGuard::new(sync0_cycle);
 
-            if sync_mode == SyncMode::DC {
-                tracing::info!("Configuring Sync0 with cycle time {:?}.", sync0_cycle);
-                config_dc_guard.set_dc_config();
-            }
+            tracing::info!("Configuring Sync0 with cycle time {:?}.", sync0_cycle);
+            config_dc_guard.set_dc_config();
 
             tracing::info!("Waiting for synchronization.");
             let (tx, rx) = bounded(1);
@@ -235,7 +228,7 @@ impl SOEMInner {
                 result.io_map.clone(),
                 buffer_queue_sender,
                 send_queue_receiver,
-                timer_strategy,
+                sleeper,
                 thread_priority,
                 #[cfg(target_os = "windows")]
                 process_priority,
@@ -244,11 +237,6 @@ impl SOEMInner {
 
             if !OpStateGuard::is_op_state() {
                 return Err(SOEMError::NotResponding(EcStatus::new(num_devices)).into());
-            }
-
-            if sync_mode == SyncMode::FreeRun {
-                tracing::info!("Configuring Sync0 with cycle time {:?}.", sync0_cycle);
-                result.config_dc_guard.as_mut().unwrap().dc_config();
             }
 
             tracing::info!(
@@ -378,16 +366,23 @@ impl Drop for SOEMInner {
 /// A [`Link`] using [SOEM].
 ///
 /// [SOEM]: https://github.com/OpenEtherCATsociety/SOEM
-pub struct SOEM<F: Fn(usize, Status) + Send + Sync + 'static> {
-    option: Option<(F, SOEMOption)>,
+pub struct SOEM<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep> {
+    option: Option<(F, SOEMOption, S)>,
     inner: Option<SOEMInner>,
 }
 
-impl<F: Fn(usize, Status) + Send + Sync + 'static> SOEM<F> {
+impl<F: Fn(usize, Status) + Send + Sync + 'static> SOEM<F, SpinSleeper> {
     /// Creates a new [`SOEM`].
-    pub fn new(err_handler: F, option: SOEMOption) -> SOEM<F> {
+    pub fn new(err_handler: F, option: SOEMOption) -> SOEM<F, SpinSleeper> {
+        SOEM::new_with_sleeper(err_handler, option, SpinSleeper::default())
+    }
+}
+
+impl<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep> SOEM<F, S> {
+    /// Creates a new [`SOEM`] with a sleeper
+    pub fn new_with_sleeper(err_handler: F, option: SOEMOption, sleeper: S) -> SOEM<F, S> {
         SOEM {
-            option: Some((err_handler, option)),
+            option: Some((err_handler, option, sleeper)),
             inner: None,
         }
     }
@@ -407,10 +402,15 @@ impl<F: Fn(usize, Status) + Send + Sync + 'static> SOEM<F> {
     }
 }
 
-impl<F: Fn(usize, Status) + Send + Sync + 'static> Link for SOEM<F> {
+impl<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep + Send + 'static> Link for SOEM<F, S> {
     fn open(&mut self, geometry: &Geometry) -> Result<(), LinkError> {
-        if let Some((err_handler, option)) = self.option.take() {
-            self.inner = Some(SOEMInner::open(err_handler, option, geometry)?);
+        if let Some((err_handler, option, sleeper)) = self.option.take() {
+            self.inner = Some(SOEMInner::open_with_sleeper(
+                err_handler,
+                option,
+                geometry,
+                sleeper,
+            )?);
         }
         Ok(())
     }
@@ -500,18 +500,6 @@ impl SOEMDCConfigGuard {
             });
         }
     }
-
-    fn dc_config(&self) {
-        unsafe {
-            let cyc_time = (ecx_context.userdata as *mut Duration)
-                .as_ref()
-                .unwrap()
-                .as_nanos() as _;
-            (1..=ec_slavecount as u16).for_each(|i| {
-                ec_dcsync0(i, 1, cyc_time, 0);
-            });
-        }
-    }
 }
 
 impl Drop for SOEMDCConfigGuard {
@@ -582,63 +570,36 @@ struct SOEMECatThreadGuard {
 
 impl SOEMECatThreadGuard {
     #[allow(clippy::too_many_arguments)]
-    fn new(
+    fn new<S: Sleep + Send + 'static>(
         is_open: Arc<AtomicBool>,
         wkc: Arc<AtomicI32>,
         io_map: Arc<Mutex<IOMap>>,
         buffer_queue_sender: Sender<Vec<TxMessage>>,
         send_queue_receiver: Receiver<Vec<TxMessage>>,
-        timer_strategy: TimerStrategy,
+        sleeper: S,
         thread_priority: ThreadPriority,
         #[cfg(target_os = "windows")] process_priority: super::ProcessPriority,
         ec_send_cycle: Duration,
     ) -> Self {
         Self {
-            ecatth_handle: match timer_strategy {
-                TimerStrategy::SpinSleep => Some(std::thread::spawn(move || {
-                    Self::ecat_run::<SpinSleep>(
-                        is_open,
-                        io_map,
-                        wkc,
-                        buffer_queue_sender,
-                        send_queue_receiver,
-                        ec_send_cycle,
-                        thread_priority,
-                        #[cfg(target_os = "windows")]
-                        process_priority,
-                    )
-                })),
-                TimerStrategy::StdSleep => Some(std::thread::spawn(move || {
-                    Self::ecat_run::<StdSleep>(
-                        is_open,
-                        io_map,
-                        wkc,
-                        buffer_queue_sender,
-                        send_queue_receiver,
-                        ec_send_cycle,
-                        thread_priority,
-                        #[cfg(target_os = "windows")]
-                        process_priority,
-                    )
-                })),
-                TimerStrategy::SpinWait => Some(std::thread::spawn(move || {
-                    Self::ecat_run::<SpinWait>(
-                        is_open,
-                        io_map,
-                        wkc,
-                        buffer_queue_sender,
-                        send_queue_receiver,
-                        ec_send_cycle,
-                        thread_priority,
-                        #[cfg(target_os = "windows")]
-                        process_priority,
-                    )
-                })),
-            },
+            ecatth_handle: Some(std::thread::spawn(move || {
+                Self::ecat_run::<S>(
+                    is_open,
+                    io_map,
+                    wkc,
+                    buffer_queue_sender,
+                    send_queue_receiver,
+                    ec_send_cycle,
+                    sleeper,
+                    thread_priority,
+                    #[cfg(target_os = "windows")]
+                    process_priority,
+                )
+            })),
         }
     }
 
-    #[cfg_attr(target_os = "windows", allow(clippy::too_many_arguments))]
+    #[allow(clippy::too_many_arguments)]
     fn ecat_run<S: Sleep>(
         is_open: Arc<AtomicBool>,
         io_map: Arc<Mutex<IOMap>>,
@@ -646,6 +607,7 @@ impl SOEMECatThreadGuard {
         buffer_queue_sender: Sender<Vec<TxMessage>>,
         receiver: Receiver<Vec<TxMessage>>,
         cycle: Duration,
+        sleeper: S,
         thread_priority: ThreadPriority,
         #[cfg(target_os = "windows")] process_priority: super::ProcessPriority,
     ) -> Result<(), SOEMError> {
@@ -686,7 +648,7 @@ impl SOEMECatThreadGuard {
 
                 let duration = ts - time::OffsetDateTime::now_utc();
                 if duration > time::Duration::ZERO {
-                    S::sleep(std::time::Duration::from_nanos(
+                    sleeper.sleep(std::time::Duration::from_nanos(
                         duration.whole_nanoseconds() as _,
                     ));
                     cnt_miss_deadline = 0;
@@ -795,7 +757,9 @@ use autd3_core::link::AsyncLink;
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[cfg_attr(feature = "async-trait", autd3_core::async_trait)]
-impl<F: Fn(usize, Status) + Send + Sync + 'static> AsyncLink for SOEM<F> {
+impl<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep + Send + 'static> AsyncLink
+    for SOEM<F, S>
+{
     async fn open(&mut self, geometry: &Geometry) -> Result<(), LinkError> {
         <Self as Link>::open(self, geometry)
     }
