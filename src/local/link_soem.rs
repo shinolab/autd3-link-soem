@@ -374,13 +374,13 @@ pub struct SOEM<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep> {
 impl<F: Fn(usize, Status) + Send + Sync + 'static> SOEM<F, SpinSleeper> {
     /// Creates a new [`SOEM`].
     pub fn new(err_handler: F, option: SOEMOption) -> SOEM<F, SpinSleeper> {
-        SOEM::new_with_sleeper(err_handler, option, SpinSleeper::default())
+        SOEM::with_sleeper(err_handler, option, SpinSleeper::default())
     }
 }
 
 impl<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep> SOEM<F, S> {
     /// Creates a new [`SOEM`] with a sleeper
-    pub fn new_with_sleeper(err_handler: F, option: SOEMOption, sleeper: S) -> SOEM<F, S> {
+    pub fn with_sleeper(err_handler: F, option: SOEMOption, sleeper: S) -> SOEM<F, S> {
         SOEM {
             option: Some((err_handler, option, sleeper)),
             inner: None,
