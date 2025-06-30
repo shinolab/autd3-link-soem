@@ -28,6 +28,8 @@ pub enum SOEMError {
     SynchronizeFailed(Duration, Duration),
     #[error("{0}")]
     ThreadPriorityError(#[from] thread_priority::Error),
+    #[error("Failed to set CPU affinity for the EtherCAT thread: {0:?}")]
+    AffinitySetFailed(core_affinity::CoreId),
 }
 
 impl From<SOEMError> for LinkError {

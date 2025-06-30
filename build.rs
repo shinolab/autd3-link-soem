@@ -22,14 +22,14 @@ fn main() -> anyhow::Result<()> {
         let build = build.file(entry?);
         Result::<_, glob::GlobError>::Ok(build)
     })?;
-    glob::glob(&format!("3rdparty/SOEM/osal/{}/*.c", os))?.try_fold(
+    glob::glob(&format!("3rdparty/SOEM/osal/{os}/*.c"))?.try_fold(
         &mut build,
         |build, entry| {
             let build = build.file(entry?);
             Result::<_, glob::GlobError>::Ok(build)
         },
     )?;
-    glob::glob(&format!("3rdparty/SOEM/oshw/{}/*.c", os))?.try_fold(
+    glob::glob(&format!("3rdparty/SOEM/oshw/{os}/*.c"))?.try_fold(
         &mut build,
         |build, entry| {
             let build = build.file(entry?);
@@ -39,8 +39,8 @@ fn main() -> anyhow::Result<()> {
     build
         .include("3rdparty/SOEM/soem")
         .include("3rdparty/SOEM/osal")
-        .include(format!("3rdparty/SOEM/osal/{}", os))
-        .include(format!("3rdparty/SOEM/oshw/{}", os));
+        .include(format!("3rdparty/SOEM/osal/{os}"))
+        .include(format!("3rdparty/SOEM/oshw/{os}"));
     #[cfg(target_os = "windows")]
     {
         build
