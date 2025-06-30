@@ -15,7 +15,7 @@ impl RemoteSOEMInner {
     async fn open(addr: &SocketAddr, geometry: &Geometry) -> Result<Self, LinkError> {
         tracing::info!("Connecting to remote SOEM server@{}", addr);
 
-        let conn = tonic::transport::Endpoint::new(format!("http://{}", addr))
+        let conn = tonic::transport::Endpoint::new(format!("http://{addr}"))
             .map_err(AUTDProtoBufError::from)?
             .connect()
             .await

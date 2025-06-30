@@ -64,6 +64,7 @@ impl SOEMInner {
                 process_priority,
                 sync_tolerance,
                 sync_timeout,
+                affinity,
             } = option;
 
             if sync0_cycle.is_zero() || sync0_cycle.as_nanos() % EC_CYCLE_TIME_BASE.as_nanos() != 0
@@ -233,6 +234,7 @@ impl SOEMInner {
                 #[cfg(target_os = "windows")]
                 process_priority,
                 send_cycle,
+                affinity,
             ));
 
             if !OpStateGuard::is_op_state() {
@@ -580,6 +582,7 @@ impl SOEMECatThreadGuard {
         thread_priority: ThreadPriority,
         #[cfg(target_os = "windows")] process_priority: super::ProcessPriority,
         ec_send_cycle: Duration,
+        affinity: Option<core_affinity::CoreId>,
     ) -> Self {
         Self {
             ecatth_handle: Some(std::thread::spawn(move || {
@@ -594,6 +597,7 @@ impl SOEMECatThreadGuard {
                     thread_priority,
                     #[cfg(target_os = "windows")]
                     process_priority,
+                    affinity,
                 )
             })),
         }
@@ -610,7 +614,19 @@ impl SOEMECatThreadGuard {
         sleeper: S,
         thread_priority: ThreadPriority,
         #[cfg(target_os = "windows")] process_priority: super::ProcessPriority,
+        affinity: Option<core_affinity::CoreId>,
     ) -> Result<(), SOEMError> {
+        if let Some(affinity) = affinity {
+            tracing::info!(
+                "Setting CPU affinity for the EtherCAT thread to {:?}",
+                affinity
+            );
+            if !core_affinity::set_for_current(affinity) {
+                tracing::error!("Failed to set CPU affinity for the EtherCAT thread.");
+                return Err(SOEMError::AffinitySetFailed(affinity));
+            }
+        }
+
         unsafe {
             #[cfg(target_os = "windows")]
             let old_priority = {
