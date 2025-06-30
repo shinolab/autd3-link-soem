@@ -8,6 +8,7 @@ mod process_priority;
 mod soem_bindings;
 mod state;
 
+pub use core_affinity::CoreId;
 pub use error_handler::Status;
 pub use ethernet_adapters::EthernetAdapters;
 pub use link_soem::SOEM;
