@@ -22,20 +22,14 @@ fn main() -> anyhow::Result<()> {
         let build = build.file(entry?);
         Result::<_, glob::GlobError>::Ok(build)
     })?;
-    glob::glob(&format!("3rdparty/SOEM/osal/{os}/*.c"))?.try_fold(
-        &mut build,
-        |build, entry| {
-            let build = build.file(entry?);
-            Result::<_, glob::GlobError>::Ok(build)
-        },
-    )?;
-    glob::glob(&format!("3rdparty/SOEM/oshw/{os}/*.c"))?.try_fold(
-        &mut build,
-        |build, entry| {
-            let build = build.file(entry?);
-            Result::<_, glob::GlobError>::Ok(build)
-        },
-    )?;
+    glob::glob(&format!("3rdparty/SOEM/osal/{os}/*.c"))?.try_fold(&mut build, |build, entry| {
+        let build = build.file(entry?);
+        Result::<_, glob::GlobError>::Ok(build)
+    })?;
+    glob::glob(&format!("3rdparty/SOEM/oshw/{os}/*.c"))?.try_fold(&mut build, |build, entry| {
+        let build = build.file(entry?);
+        Result::<_, glob::GlobError>::Ok(build)
+    })?;
     build
         .include("3rdparty/SOEM/soem")
         .include("3rdparty/SOEM/osal")

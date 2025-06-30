@@ -3,7 +3,7 @@ name = "autd3-link-soem"
 description = "autd3 link using SOEM"
 readme = "README.md"
 keywords = ["autd"]
-version = "35.0.0"
+version = "35.0.1"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 license = "MIT"
 edition = "2024"
@@ -24,8 +24,8 @@ async = ["autd3-core/async"]
 async-trait = ["autd3-core/async-trait", "autd3-protobuf/async-trait"]
 
 [dependencies]
-autd3-core = { version = "35.0.0", default-features = false, features = ["link"] }
-autd3-protobuf = { version = "35.0.0", optional = true }
+autd3-core = { version = "35.0.1", default-features = false, features = ["link"] }
+autd3-protobuf = { version = "35.0.1", optional = true }
 core_affinity = { version = "0.8.3", default-features = false }
 crossbeam-channel = { version = "0.5.15", default-features = false, features = ["std"] }
 derive_more = { version = "2.0.1", default-features = false }
@@ -48,7 +48,7 @@ glob = { version = "0.3.2", optional = true, default-features = false }
 
 [dev-dependencies]
 anyhow = { version = "1.0.98", default-features = false }
-autd3 = { version = "35.0.0", features = ["async"] }
+autd3 = { version = "35.0.1", features = ["async"] }
 tokio = { version = "1.45.1", default-features = false, features = ["rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.19", features = ["fmt"], default-features = false }
 
