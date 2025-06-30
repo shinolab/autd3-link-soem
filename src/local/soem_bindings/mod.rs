@@ -5,6 +5,7 @@
 #![allow(deref_nullptr)]
 #![allow(unused_imports)]
 #![allow(unsafe_op_in_unsafe_fn)]
+#![allow(unnecessary_transmutes)]
 #![allow(clippy::useless_transmute)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::upper_case_acronyms)]

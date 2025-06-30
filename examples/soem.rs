@@ -9,13 +9,19 @@ fn main() -> Result<()> {
         .init();
 
     let mut autd = Controller::open(
-        [AUTD3 {
-            pos: Point3::origin(),
-            rot: UnitQuaternion::identity(),
-        }],
+        [
+            AUTD3 {
+                pos: Point3::origin(),
+                rot: UnitQuaternion::identity(),
+            },
+            AUTD3 {
+                pos: Point3::origin(),
+                rot: UnitQuaternion::identity(),
+            },
+        ],
         SOEM::new(
             |slave, status| {
-                eprintln!("slave[{}]: {}", slave, status);
+                eprintln!("slave[{slave}]: {status}");
                 if status == Status::Lost {
                     // You can also wait for the link to recover, without exitting the process
                     std::process::exit(-1);

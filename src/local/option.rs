@@ -11,7 +11,7 @@ use thread_priority::ThreadPriority;
 /// [`SOEM`]: crate::local::link_soem::SOEM
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SOEMOption {
-    /// The size of the send queue buffer. The default is 32.
+    /// The size of the send queue buffer. The default is 16.
     pub buf_size: NonZeroUsize,
     /// The network interface name. If this is empty, the network interface will be automatically selected to which the AUTD3 device is connected. The default is empty.
     pub ifname: String,
@@ -30,12 +30,14 @@ pub struct SOEMOption {
     pub sync_tolerance: Duration,
     /// The synchronization timeout. The default is 10s.
     pub sync_timeout: Duration,
+    /// CPU affinity for the EtherCAT thread. The default is `None`, which means no affinity is set.
+    pub affinity: Option<core_affinity::CoreId>,
 }
 
 impl Default for SOEMOption {
     fn default() -> Self {
         Self {
-            buf_size: NonZeroUsize::new(32).unwrap(),
+            buf_size: NonZeroUsize::new(16).unwrap(),
             ifname: String::new(),
             state_check_interval: Duration::from_millis(100),
             sync0_cycle: EC_CYCLE_TIME_BASE * 2,
@@ -45,6 +47,7 @@ impl Default for SOEMOption {
             process_priority: super::ProcessPriority::High,
             sync_tolerance: std::time::Duration::from_micros(1),
             sync_timeout: std::time::Duration::from_secs(10),
+            affinity: None,
         }
     }
 }
