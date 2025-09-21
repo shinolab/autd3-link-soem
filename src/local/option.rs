@@ -2,8 +2,6 @@ use std::{num::NonZeroUsize, time::Duration};
 
 use autd3_core::ethercat::EC_CYCLE_TIME_BASE;
 
-use derive_more::Debug;
-
 use thread_priority::ThreadPriority;
 
 /// A option for [`SOEM`].

@@ -5,6 +5,7 @@ mod iomap;
 mod link_soem;
 mod option;
 mod process_priority;
+mod smoothing;
 mod soem_bindings;
 mod state;
 
