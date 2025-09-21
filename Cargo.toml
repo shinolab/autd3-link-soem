@@ -3,7 +3,7 @@ name = "autd3-link-soem"
 description = "autd3 link using SOEM"
 readme = "README.md"
 keywords = ["autd"]
-version = "35.0.1"
+version = "36.0.1"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 license = "MIT"
 edition = "2024"
@@ -15,45 +15,38 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["local"]
-blocking = ["remote", "tokio"]
-local = ["ta", "cc", "glob", "anyhow", "time", "thiserror", "windows", "thread-priority", "spin_sleep", "getset", "autd3-core/utils", "autd3-core/sleep"]
+blocking = ["tokio"]
+local = ["cc", "time", "thiserror", "windows", "thread-priority", "spin_sleep", "autd3-core/utils", "autd3-core/sleep", "autd3-core/std"]
 remote = ["autd3-protobuf", "tonic", "async"]
 all = ["local", "remote"]
 serde = ["dep:serde"]
 async = ["autd3-core/async"]
-async-trait = ["autd3-core/async-trait", "autd3-protobuf/async-trait"]
 
 [dependencies]
-autd3-core = { version = "35.0.1", default-features = false, features = ["link"] }
-autd3-protobuf = { version = "35.0.1", optional = true }
+autd3-core = { version = "36.0.1", default-features = false, features = ["link"] }
+autd3-protobuf = { version = "36.0.1", optional = true }
 core_affinity = { version = "0.8.3", default-features = false }
 crossbeam-channel = { version = "0.5.15", default-features = false, features = ["std"] }
-derive_more = { version = "2.0.1", default-features = false }
-getset = { version = "0.1.5", default-features = false, optional = true }
-serde = { version = "1.0.219", optional = true, default-features = false }
-spin_sleep = { version = "1.3.1", optional = true, default-features = false }
-ta = { version = "0.5.0", optional = true, default-features = false }
-thiserror = { version = "2.0.12", optional = true, default-features = false }
+serde = { version = "1.0.226", optional = true, default-features = false }
+spin_sleep = { version = "1.3.3", optional = true, default-features = false }
+thiserror = { version = "2.0.16", optional = true, default-features = false }
 thread-priority = { version = "3.0.0", optional = true, default-features = false }
-time = { version = "0.3.41", optional = true, default-features = false }
-tokio = { version = "1.45.1", optional = true, default-features = false, features = ["rt-multi-thread"] }
-tonic = { version = "0.13.1", optional = true, default-features = false }
+time = { version = "0.3.44", optional = true, default-features = false }
+tokio = { version = "1.47.1", optional = true, default-features = false, features = ["rt-multi-thread"] }
+tonic = { version = "0.14.2", optional = true, default-features = false }
 tracing = { version = "0.1.41", default-features = false }
-zerocopy = { version = "0.8.25", default-features = false }
-
-[build-dependencies]
-anyhow = { version = "1.0.98", optional = true, default-features = false }
-cc = { version = "1.2.24", optional = true, default-features = false }
-glob = { version = "0.3.2", optional = true, default-features = false }
-
-[dev-dependencies]
-anyhow = { version = "1.0.98", default-features = false }
-autd3 = { version = "35.0.1", features = ["async"] }
-tokio = { version = "1.45.1", default-features = false, features = ["rt-multi-thread"] }
-tracing-subscriber = { version = "0.3.19", features = ["fmt"], default-features = false }
+zerocopy = { version = "0.8.27", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.61.1", optional = true, default-features = false }
+windows = { version = "0.62.0", optional = true, default-features = false, features = ["Win32", "Win32_System", "Win32_System_Threading"] }
+
+[build-dependencies]
+cc = { version = "1.2.38", optional = true, default-features = false }
+
+[dev-dependencies]
+autd3 = { version = "36.0.1", features = ["async"] }
+tokio = { version = "1.47.1", default-features = false, features = ["rt-multi-thread"] }
+tracing-subscriber = { version = "0.3.20", features = ["fmt"], default-features = false }
 
 [[example]]
 name = "soem"

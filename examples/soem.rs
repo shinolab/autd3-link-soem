@@ -1,9 +1,7 @@
-use anyhow::Result;
-
 use autd3::prelude::*;
 use autd3_link_soem::{SOEM, Status};
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();

@@ -2,24 +2,51 @@ use crate::local::soem_bindings;
 
 use std::ffi::CStr;
 
-use derive_more::{Deref, Display, IntoIterator};
-use getset::Getters;
-
-#[derive(Clone, Display, Getters)]
-#[display("{}, {}", name, desc)]
+#[derive(Clone, Debug)]
 pub struct EthernetAdapter {
-    #[getset(get = "pub")]
     desc: String,
-    #[getset(get = "pub")]
     name: String,
 }
 
+impl EthernetAdapter {
+    /// The description of the adapter.
+    pub fn desc(&self) -> &str {
+        &self.desc
+    }
+
+    /// The name of the adapter.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl std::fmt::Display for EthernetAdapter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}, {}", self.name, self.desc)
+    }
+}
+
 /// A list of Ethernet adapters.
-#[derive(Clone, Deref, IntoIterator)]
+#[derive(Clone)]
 pub struct EthernetAdapters {
-    #[deref]
-    #[into_iterator]
     adapters: Vec<EthernetAdapter>,
+}
+
+impl std::ops::Deref for EthernetAdapters {
+    type Target = [EthernetAdapter];
+
+    fn deref(&self) -> &Self::Target {
+        &self.adapters
+    }
+}
+
+impl std::iter::IntoIterator for EthernetAdapters {
+    type Item = EthernetAdapter;
+    type IntoIter = std::vec::IntoIter<EthernetAdapter>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.adapters.into_iter()
+    }
 }
 
 impl EthernetAdapters {
