@@ -10,7 +10,6 @@ use std::{
 
 use crossbeam_channel::{Receiver, Sender, bounded};
 use spin_sleep::SpinSleeper;
-use ta::{Next, indicators::ExponentialMovingAverage};
 use thread_priority::ThreadPriority;
 use time::ext::NumericalDuration;
 use zerocopy::FromZeros;
@@ -21,6 +20,8 @@ use autd3_core::{
     link::{Link, LinkError, RxMessage, TxMessage},
     sleep::Sleep,
 };
+
+use crate::local::smoothing::Smoothing;
 
 use super::{
     Status, error::SOEMError, error_handler::EcatErrorHandler, ethernet_adapters::EthernetAdapters,
@@ -142,8 +143,7 @@ impl SOEMInner {
                 let mut last_diff = (0..wc as usize - 1)
                     .map(|_| sync_tolerance.as_nanos() as u32)
                     .collect::<Vec<_>>();
-                let mut diff_averages =
-                    vec![ExponentialMovingAverage::new(9).unwrap(); (wc - 1) as usize];
+                let mut diff_averages = vec![Smoothing::new(0.2); (wc - 1) as usize];
                 let start = std::time::Instant::now();
                 loop {
                     let max_diff = (2..=wc)
@@ -173,7 +173,7 @@ impl SOEMInner {
                             } else {
                                 diff as i32
                             };
-                            let diff = Duration::from_nanos(ave.next(diff as f64).abs() as _);
+                            let diff = Duration::from_nanos(ave.push(diff as _).abs() as _);
                             tracing::trace!("DCSYSDIFF[{}] = {:?}.", slave - 1, diff);
                             acc.max(diff)
                         });

@@ -1,7 +1,3 @@
-#![allow(static_mut_refs)]
-
-// TODO: static mut will be deprecated in Rust 2024 edition?
-
 use std::sync::{
     Arc,
     atomic::{AtomicBool, AtomicI32, Ordering},
@@ -9,21 +5,26 @@ use std::sync::{
 
 use crate::local::soem_bindings::*;
 
-use derive_more::Display;
-
-#[derive(Debug, Clone, PartialEq, Display)]
+#[derive(Debug, Clone, PartialEq)]
 #[repr(u8)]
 /// The status of the EtherCAT slave.
 pub enum Status {
     /// The slave is in SAFE_OP + ERROR.
-    #[display("slave is in SAFE_OP + ERROR, attempting ack")]
     Error = 0,
     /// The slave is lost.
-    #[display("slave is lost")]
     Lost = 1,
     /// The slave is in SAFE_OP.
-    #[display("slave is in SAFE_OP, change to OPERATIONAL")]
     StateChanged = 2,
+}
+
+impl std::fmt::Display for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Status::Error => write!(f, "slave is in SAFE_OP + ERROR, attempting ack"),
+            Status::Lost => write!(f, "slave is lost"),
+            Status::StateChanged => write!(f, "slave is in SAFE_OP, change to OPERATIONAL"),
+        }
+    }
 }
 
 pub struct EcatErrorHandler<F: Fn(usize, Status)> {
@@ -52,61 +53,52 @@ impl<F: Fn(usize, Status)> EcatErrorHandler<F> {
         unsafe /* ignore miri */ {
             ec_group[0].docheckstate = 0;
             ec_readstate();
-            ec_slave
-                .iter_mut()
-                .enumerate()
-                .skip(1)
-                .take(ec_slavecount as usize)
-                .for_each(|(i, slave)| {
-                    if slave.state != ec_state_EC_STATE_OPERATIONAL as u16 {
-                        ec_group[0].docheckstate = 1;
-                        if slave.state
-                            == ec_state_EC_STATE_SAFE_OP as u16 + ec_state_EC_STATE_ERROR as u16
-                        {
-                            (self.err_handler)(i - 1, Status::Error);
-                            slave.state =
-                                ec_state_EC_STATE_SAFE_OP as u16 + ec_state_EC_STATE_ACK as u16;
-                            ec_writestate(i as _);
-                        } else if slave.state == ec_state_EC_STATE_SAFE_OP as u16 {
-                            (self.err_handler)(i - 1, Status::StateChanged);
-                            slave.state = ec_state_EC_STATE_OPERATIONAL as _;
-                            ec_writestate(i as _);
-                        } else if slave.state > ec_state_EC_STATE_NONE as u16 {
-                            if ec_reconfig_slave(i as _, 500) != 0 {
-                                slave.islost = 0;
-                            }
-                        } else if slave.islost == 0 {
-                            ec_statecheck(
-                                i as _,
-                                ec_state_EC_STATE_OPERATIONAL as _,
-                                EC_TIMEOUTRET as _,
-                            );
-                            if slave.state == ec_state_EC_STATE_NONE as u16 {
-                                slave.islost = 1;
-                                (self.err_handler)(i - 1, Status::Lost);
-                            }
-                        }
-                    }
-                    if slave.islost != 0 {
-                        if slave.state == ec_state_EC_STATE_NONE as u16 {
-                            if ec_recover_slave(i as _, 500) != 0 {
-                                slave.islost = 0;
-                            }
-                        } else {
+            (1..=ec_slavecount as usize).for_each(|i| {
+                let mut slave = ec_slave[i];
+                if slave.state != ec_state_EC_STATE_OPERATIONAL as u16 {
+                    ec_group[0].docheckstate = 1;
+                    if slave.state
+                        == ec_state_EC_STATE_SAFE_OP as u16 + ec_state_EC_STATE_ERROR as u16
+                    {
+                        (self.err_handler)(i - 1, Status::Error);
+                        slave.state =
+                            ec_state_EC_STATE_SAFE_OP as u16 + ec_state_EC_STATE_ACK as u16;
+                        ec_writestate(i as _);
+                    } else if slave.state == ec_state_EC_STATE_SAFE_OP as u16 {
+                        (self.err_handler)(i - 1, Status::StateChanged);
+                        slave.state = ec_state_EC_STATE_OPERATIONAL as _;
+                        ec_writestate(i as _);
+                    } else if slave.state > ec_state_EC_STATE_NONE as u16 {
+                        if ec_reconfig_slave(i as _, 500) != 0 {
                             slave.islost = 0;
                         }
+                    } else if slave.islost == 0 {
+                        ec_statecheck(
+                            i as _,
+                            ec_state_EC_STATE_OPERATIONAL as _,
+                            EC_TIMEOUTRET as _,
+                        );
+                        if slave.state == ec_state_EC_STATE_NONE as u16 {
+                            slave.islost = 1;
+                            (self.err_handler)(i - 1, Status::Lost);
+                        }
                     }
-                });
+                }
+                if slave.islost != 0 {
+                    if slave.state == ec_state_EC_STATE_NONE as u16 {
+                        if ec_recover_slave(i as _, 500) != 0 {
+                            slave.islost = 0;
+                        }
+                    } else {
+                        slave.islost = 0;
+                    }
+                }
+            });
 
             if ec_group[0].docheckstate == 0 {
                 return true;
             }
-
-            ec_slave
-                .iter()
-                .skip(1)
-                .take(ec_slavecount as usize)
-                .all(|slave| slave.islost == 0)
+            (1..=ec_slavecount as usize).all(|i| ec_slave[i].islost == 0)
         }
     }
 }

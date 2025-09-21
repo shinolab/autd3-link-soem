@@ -3,14 +3,19 @@ use autd3_core::{
     link::{RxMessage, TxMessage},
 };
 
-use derive_more::Deref;
 use zerocopy::{FromBytes, IntoBytes};
 
-#[derive(Deref)]
 pub struct IOMap {
-    #[deref]
     buf: Vec<u8>,
     num_devices: usize,
+}
+
+impl std::ops::Deref for IOMap {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.buf
+    }
 }
 
 impl IOMap {

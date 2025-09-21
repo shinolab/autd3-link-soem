@@ -2,19 +2,21 @@ use std::ffi::CStr;
 
 use super::soem_bindings::*;
 
-use derive_more::Display;
-
-#[derive(Debug, Display)]
-#[display(
-    "{} (State={:#04X}, StatusCode={:#04X})",
-    status,
-    ec_state,
-    al_status_code
-)]
+#[derive(Debug)]
 pub struct State {
     status: String,
     ec_state: u16,
     al_status_code: u16,
+}
+
+impl std::fmt::Display for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} (State={:#04X}, StatusCode={:#04X})",
+            self.status, self.ec_state, self.al_status_code
+        )
+    }
 }
 
 #[derive(Debug)]

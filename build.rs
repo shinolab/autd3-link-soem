@@ -1,5 +1,5 @@
 #[cfg(feature = "local")]
-fn main() -> anyhow::Result<()> {
+fn main() {
     println!("cargo:rerun-if-changed=3rdparty/SOEM");
 
     #[cfg(target_os = "windows")]
@@ -18,18 +18,23 @@ fn main() -> anyhow::Result<()> {
     let mut build = cc::Build::new();
     build.cpp(false);
 
-    glob::glob("3rdparty/SOEM/soem/*.c")?.try_fold(&mut build, |build, entry| {
-        let build = build.file(entry?);
-        Result::<_, glob::GlobError>::Ok(build)
-    })?;
-    glob::glob(&format!("3rdparty/SOEM/osal/{os}/*.c"))?.try_fold(&mut build, |build, entry| {
-        let build = build.file(entry?);
-        Result::<_, glob::GlobError>::Ok(build)
-    })?;
-    glob::glob(&format!("3rdparty/SOEM/oshw/{os}/*.c"))?.try_fold(&mut build, |build, entry| {
-        let build = build.file(entry?);
-        Result::<_, glob::GlobError>::Ok(build)
-    })?;
+    [
+        "3rdparty/SOEM/soem/ethercatbase.c",
+        "3rdparty/SOEM/soem/ethercatcoe.c",
+        "3rdparty/SOEM/soem/ethercatconfig.c",
+        "3rdparty/SOEM/soem/ethercatdc.c",
+        "3rdparty/SOEM/soem/ethercateoe.c",
+        "3rdparty/SOEM/soem/ethercatfoe.c",
+        "3rdparty/SOEM/soem/ethercatmain.c",
+        "3rdparty/SOEM/soem/ethercatprint.c",
+        "3rdparty/SOEM/soem/ethercatsoe.c",
+    ]
+    .into_iter()
+    .fold(&mut build, |build, entry| build.file(entry))
+    .file(format!("3rdparty/SOEM/osal/{os}/osal.c"))
+    .file(format!("3rdparty/SOEM/oshw/{os}/nicdrv.c"))
+    .file(format!("3rdparty/SOEM/oshw/{os}/oshw.c"));
+
     build
         .include("3rdparty/SOEM/soem")
         .include("3rdparty/SOEM/osal")
@@ -70,8 +75,6 @@ fn main() -> anyhow::Result<()> {
         println!("cargo:rustc-link-lib=pthread");
         println!("cargo:rustc-link-lib=rt");
     }
-
-    Ok(())
 }
 
 #[cfg(not(feature = "local"))]
