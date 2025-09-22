@@ -25,7 +25,7 @@ async-trait = ["autd3-core/async-trait", "autd3-protobuf/async-trait"]
 
 [dependencies]
 autd3-core = { version = "35.0.1", default-features = false, features = ["link"] }
-autd3-protobuf = { version = "35.0.1", optional = true }
+autd3-protobuf = { version = "36.0.1", optional = true }
 core_affinity = { version = "0.8.3", default-features = false }
 crossbeam-channel = { version = "0.5.15", default-features = false, features = ["std"] }
 derive_more = { version = "2.0.1", default-features = false }
