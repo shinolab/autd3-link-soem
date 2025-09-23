@@ -46,7 +46,7 @@ pub struct SOEMHandler {
 
 impl SOEMHandler {
     pub(crate) fn open_with_sleeper<
-        F: Fn(usize, Status) + Send + Sync + 'static,
+        F: Fn(u16, Status) + Send + Sync + 'static,
         S: Sleep + Send + 'static,
     >(
         err_handler: F,
@@ -82,7 +82,7 @@ impl SOEMHandler {
             if is_autd3(slave) {
                 Ok(())
             } else {
-                tracing::error!("Slave[{}] is not an AUTD device.", i);
+                tracing::error!("Slave[{}] is not an AUTD device.", i + 1);
                 Err(SOEMError::NoDeviceFound)
             }
         })?;
@@ -114,7 +114,7 @@ impl SOEMHandler {
         tracing::info!("All devices are in safe operational state.");
 
         let is_open = Arc::new(AtomicBool::new(true));
-        let wkc = Arc::new(AtomicI32::new(0));
+        let do_wkc_check = Arc::new(AtomicI32::new(0));
 
         let state_check_interval = option.state_check_interval;
         let buf_size = option.buf_size.get();
@@ -128,14 +128,16 @@ impl SOEMHandler {
         let ecat_th = Some(std::thread::spawn({
             let is_open = is_open.clone();
             let io_map = io_map.clone();
-            let wkc = wkc.clone();
+            let expected_wkc = ctx.expected_wkc();
+            let do_wkc_check = do_wkc_check.clone();
             let ctx = ctx.clone();
             move || {
                 ecat_run::<S>(
                     ctx,
                     is_open,
                     io_map,
-                    wkc,
+                    expected_wkc,
+                    do_wkc_check,
                     buffer_queue_sender,
                     send_queue_receiver,
                     sleeper,
@@ -168,12 +170,11 @@ impl SOEMHandler {
         );
         let ecat_check_th = Some(std::thread::spawn({
             let is_open = is_open.clone();
-            let expected_wkc = ctx.expected_wkc();
             let ctx = ctx.clone();
             move || {
                 while is_open.load(Ordering::Acquire) {
-                    if wkc.load(Ordering::Relaxed) < expected_wkc || ctx.docheckstate() {
-                        ctx.handle_error(&err_handler);
+                    if do_wkc_check.load(Ordering::Relaxed) > 2 || ctx.docheckstate() {
+                        ctx.handle_error(&err_handler, &do_wkc_check);
                     }
                     std::thread::sleep(state_check_interval);
                 }
@@ -301,7 +302,7 @@ fn wait_for_sync(
                             EC_TIMEOUTRET as _,
                         );
                         let diff = if res != 1 {
-                            tracing::trace!("Failed to read DCSYSDIFF[{}].", i);
+                            tracing::trace!("Failed to read DCSYSDIFF[{}].", i + 1);
                             *last_diff
                         } else {
                             *last_diff = diff;
@@ -316,7 +317,7 @@ fn wait_for_sync(
                             diff as i32
                         };
                         let diff = Duration::from_nanos(ave.push(diff as _).abs() as _);
-                        tracing::trace!("DCSYSDIFF[{}] = {:?}.", i, diff);
+                        tracing::trace!("DCSYSDIFF[{}] = {:?}.", i + 1, diff);
                         acc.max(diff)
                     });
                 tracing::debug!("Maximum system time difference is {:?}.", max_diff);
@@ -347,7 +348,8 @@ fn ecat_run<S: Sleep>(
     ctx: Arc<Context>,
     is_open: Arc<AtomicBool>,
     io_map: Arc<Mutex<IOMap>>,
-    wkc: Arc<AtomicI32>,
+    expected_wkc: i32,
+    do_wkc_check: Arc<AtomicI32>,
     buffer_queue_sender: Sender<Vec<TxMessage>>,
     receiver: Receiver<Vec<TxMessage>>,
     sleeper: S,
@@ -401,10 +403,9 @@ fn ecat_run<S: Sleep>(
             }
         }
 
-        wkc.store(
-            ctx.receive_processdata(EC_TIMEOUTRET as i32),
-            Ordering::Relaxed,
-        );
+        if ctx.receive_processdata(EC_TIMEOUTRET as i32) != expected_wkc {
+            do_wkc_check.fetch_add(1, Ordering::Relaxed);
+        }
 
         toff = ec_sync(
             ctx.dctime(),

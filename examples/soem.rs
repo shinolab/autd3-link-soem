@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             |slave, status| {
                 eprintln!("slave[{slave}]: {status}");
                 if status == Status::Lost {
-                    // You can also wait for the link to recover, without exitting the process
+                    // You can also wait for the link to recover, without exiting the process
                     std::process::exit(-1);
                 }
             },
