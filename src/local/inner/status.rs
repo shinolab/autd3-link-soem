@@ -18,6 +18,10 @@ pub enum Status {
     Lost = 1,
     /// The slave is in SAFE_OP.
     StateChanged = 2,
+    /// The slave recovered.
+    Recovered = 3,
+    /// All slaves resumed OPERATIONAL.
+    Resumed = 4,
 }
 
 impl std::fmt::Display for Status {
@@ -26,6 +30,8 @@ impl std::fmt::Display for Status {
             Status::Error => write!(f, "slave is in SAFE_OP + ERROR, attempting ack"),
             Status::Lost => write!(f, "slave is lost"),
             Status::StateChanged => write!(f, "slave is in SAFE_OP, change to OPERATIONAL"),
+            Status::Recovered => write!(f, "slave is recovered"),
+            Status::Resumed => write!(f, "all slaves resumed OPERATIONAL"),
         }
     }
 }

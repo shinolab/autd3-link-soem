@@ -23,19 +23,19 @@ use super::Status;
 /// A [`Link`] using [SOEM].
 ///
 /// [SOEM]: https://github.com/OpenEtherCATsociety/SOEM
-pub struct SOEM<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep> {
+pub struct SOEM<F: Fn(u16, Status) + Send + Sync + 'static, S: Sleep> {
     option: Option<(F, SOEMOption, S)>,
     handler: Option<SOEMHandler>,
 }
 
-impl<F: Fn(usize, Status) + Send + Sync + 'static> SOEM<F, SpinSleeper> {
+impl<F: Fn(u16, Status) + Send + Sync + 'static> SOEM<F, SpinSleeper> {
     /// Creates a new [`SOEM`].
     pub fn new(err_handler: F, option: SOEMOption) -> SOEM<F, SpinSleeper> {
         SOEM::with_sleeper(err_handler, option, SpinSleeper::default())
     }
 }
 
-impl<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep> SOEM<F, S> {
+impl<F: Fn(u16, Status) + Send + Sync + 'static, S: Sleep> SOEM<F, S> {
     /// Creates a new [`SOEM`] with a sleeper
     pub fn with_sleeper(err_handler: F, option: SOEMOption, sleeper: S) -> SOEM<F, S> {
         SOEM {
@@ -57,7 +57,7 @@ impl<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep> SOEM<F, S> {
     }
 }
 
-impl<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep + Send + 'static> Link for SOEM<F, S> {
+impl<F: Fn(u16, Status) + Send + Sync + 'static, S: Sleep + Send + 'static> Link for SOEM<F, S> {
     fn open(&mut self, geometry: &Geometry) -> Result<(), LinkError> {
         if let Some((err_handler, option, sleeper)) = self.option.take() {
             self.handler = Some(SOEMHandler::open_with_sleeper(
@@ -111,7 +111,7 @@ use autd3_core::link::AsyncLink;
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<F: Fn(usize, Status) + Send + Sync + 'static, S: Sleep + Send + 'static> AsyncLink
+impl<F: Fn(u16, Status) + Send + Sync + 'static, S: Sleep + Send + 'static> AsyncLink
     for SOEM<F, S>
 {
     async fn open(&mut self, geometry: &Geometry) -> Result<(), LinkError> {

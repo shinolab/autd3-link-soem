@@ -11,6 +11,10 @@
 use std::{
     cell::Cell,
     ffi::{CString, c_void},
+    sync::{
+        Arc,
+        atomic::{AtomicI32, Ordering},
+    },
     time::Duration,
 };
 
@@ -76,12 +80,12 @@ impl Context {
         self.ctx_mut().grouplist[0].docheckstate != 0
     }
 
-    fn reconfig_slave(&self, slave: usize, timeout: u32) -> i32 {
-        unsafe { ecx_reconfig_slave(self.as_mut_ptr(), slave as _, timeout as _) }
+    fn reconfig_slave(&self, slave: u16, timeout: u32) -> i32 {
+        unsafe { ecx_reconfig_slave(self.as_mut_ptr(), slave, timeout as _) }
     }
 
     fn recover_slave(&self, slave: u16, timeout: u32) -> i32 {
-        unsafe { ecx_recover_slave(self.as_mut_ptr(), slave as _, timeout as _) }
+        unsafe { ecx_recover_slave(self.as_mut_ptr(), slave, timeout as _) }
     }
 
     pub fn state_check(&self, slave: u16, reqstate: State, timeout: u32) {
@@ -198,37 +202,40 @@ impl Context {
 }
 
 impl Context {
-    pub fn handle_error<F: Fn(usize, Status)>(&self, handler: &F) -> bool {
+    pub fn handle_error<F: Fn(u16, Status)>(&self, handler: &F, do_wkc_check: &Arc<AtomicI32>) {
         self.ctx_mut().grouplist[0].docheckstate = 0;
         self.read_state();
         self.slaves_mut().enumerate().for_each(|(i, slave)| {
+            let slave_idx = (i + 1) as u16;
             let state = State::from(slave.state);
             if state != State::OPERATIONAL {
                 self.ctx_mut().grouplist[0].docheckstate = 1;
                 if state.is_safe_op() && state.is_error() {
-                    (handler)(i, Status::Error);
+                    (handler)(slave_idx, Status::Error);
                     slave.state = ec_state_EC_STATE_SAFE_OP as u16 + ec_state_EC_STATE_ACK as u16;
-                    self.write_state(i as _);
+                    self.write_state(slave_idx);
                 } else if state.is_safe_op() {
-                    (handler)(i, Status::StateChanged);
+                    (handler)(slave_idx, Status::StateChanged);
                     slave.state = ec_state_EC_STATE_OPERATIONAL as _;
-                    self.write_state(i as _);
+                    self.write_state(slave_idx);
                 } else if state.is_some() {
-                    if self.reconfig_slave(i, 500) != 0 {
+                    if self.reconfig_slave(slave_idx, 500) >= ec_state_EC_STATE_PRE_OP as _ {
                         slave.islost = 0;
                     }
                 } else if slave.islost == 0 {
-                    self.state_check(i as _, State::OPERATIONAL, EC_TIMEOUTRET);
+                    self.state_check(slave_idx, State::OPERATIONAL, EC_TIMEOUTRET);
                     if state.is_none() {
                         slave.islost = 1;
-                        (handler)(i, Status::Lost);
+                        unsafe { std::ptr::write_bytes(slave.inputs, 0x00, slave.Ibytes as _) };
+                        (handler)(slave_idx, Status::Lost);
                     }
                 }
             }
             if slave.islost != 0 {
                 if state.is_none() {
-                    if self.recover_slave(i as _, 500) != 0 {
+                    if self.recover_slave(slave_idx, 500) != 0 {
                         slave.islost = 0;
+                        (handler)(slave_idx, Status::Recovered);
                     }
                 } else {
                     slave.islost = 0;
@@ -237,9 +244,9 @@ impl Context {
         });
 
         if self.ctx.grouplist[0].docheckstate == 0 {
-            return true;
+            (handler)(0, Status::Resumed);
         }
-        self.slaves().all(|slave| slave.islost == 0)
+        do_wkc_check.store(0, Ordering::Relaxed);
     }
 }
 
