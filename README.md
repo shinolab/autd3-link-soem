@@ -8,7 +8,15 @@ This crate provides link using [SOEM](https://github.com/OpenEtherCATsociety/SOE
 
 # Notice
 
-SOEM has GPLv2 license with an exception, see [SOEM license file](https://github.com/OpenEtherCATsociety/SOEM/blob/master/LICENSE) for more details.
+This program uses the following open source software:
+
+SOEM (Simple Open EtherCAT Master)
+
+* Copyright (C) 2005-2025 Speciaal Machinefabriek Ketels v.o.f.
+* Copyright (C) 2005-2025 Arthur Ketels
+* Copyright (C) 2009-2025 RT-Labs AB, Sweden
+
+SOEM is licensed under GPLv3. The original license and source code can be found at: https://github.com/OpenEtherCATsociety/SOEM
 
 # Author
 

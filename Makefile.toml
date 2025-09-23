@@ -113,20 +113,30 @@ file.write_text(content, encoding="utf-8")
 [tasks.bindgen]
 windows_alias = "bindgen-windows"
 linux_alias = "bindgen-linux"
-mac_alias = "bindgen-macos"
+
+[tasks.soem-build]
+cwd = "3rdparty/SOEM"
+script_runner = "@shell"
+script = '''
+mkdir -p build
+cd build
+cmake ..
+'''
 
 [tasks.bindgen-windows]
+dependencies = ["soem-build"]
 command = "bindgen"
 args = [
-    "3rdparty/SOEM/soem/ethercat.h",
+    "3rdparty/SOEM/include/soem/soem.h",
     "--rust-edition",
     "2024",
     "--rust-target",
-    "1.88.0",
+    "1.90",
     "-o",
-    "src/local/soem_bindings/win32.rs",
+    "src/local/inner/soem_bindings/win32.rs",
     "--",
-    "-I3rdparty/SOEM/soem",
+    "-I3rdparty/SOEM/build/include",
+    "-I3rdparty/SOEM/include",
     "-I3rdparty/SOEM/osal",
     "-I3rdparty/SOEM/osal/win32/",
     "-I3rdparty/SOEM/oshw/win32/",
@@ -134,35 +144,20 @@ args = [
 ]
 
 [tasks.bindgen-linux]
+dependencies = ["soem-build"]
 command = "bindgen"
 args = [
-    "3rdparty/SOEM/soem/ethercat.h",
+    "3rdparty/SOEM/include/soem/soem.h",
     "--rust-edition",
     "2024",
     "--rust-target",
-    "1.88.0",
+    "1.90",
     "-o",
-    "src/local/soem_bindings/linux.rs",
+    "src/local/inner/soem_bindings/linux.rs",
     "--",
-    "-I3rdparty/SOEM/soem",
+    "-I3rdparty/SOEM/build/include",
+    "-I3rdparty/SOEM/include",
     "-I3rdparty/SOEM/osal",
     "-I3rdparty/SOEM/osal/linux/",
     "-I3rdparty/SOEM/oshw/linux/",
-]
-
-[tasks.bindgen-macos]
-command = "bindgen"
-args = [
-    "3rdparty/SOEM/soem/ethercat.h",
-    "--rust-edition",
-    "2024",
-    "--rust-target",
-    "1.88.0",
-    "-o",
-    "src/local/soem_bindings/macos.rs",
-    "--",
-    "-I3rdparty/SOEM/soem",
-    "-I3rdparty/SOEM/osal",
-    "-I3rdparty/SOEM/osal/macosx/",
-    "-I3rdparty/SOEM/oshw/macosx/",
 ]

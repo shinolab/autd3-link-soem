@@ -5,7 +5,7 @@ readme = "README.md"
 keywords = ["autd"]
 version = "36.0.1"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
-license = "MIT"
+license = "GPL-3.0-only"
 edition = "2024"
 repository = "https://github.com/shinolab/autd3-link-soem"
 
@@ -16,7 +16,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["local"]
 blocking = ["tokio"]
-local = ["cc", "time", "thiserror", "windows", "thread-priority", "spin_sleep", "autd3-core/utils", "autd3-core/sleep", "autd3-core/std"]
+local = ["cmake", "time", "thiserror", "windows", "thread-priority", "spin_sleep", "autd3-core/utils", "autd3-core/sleep", "autd3-core/std"]
 remote = ["autd3-protobuf", "tonic", "async"]
 all = ["local", "remote"]
 serde = ["dep:serde"]
@@ -41,7 +41,7 @@ zerocopy = { version = "0.8.27", default-features = false }
 windows = { version = "0.62.0", optional = true, default-features = false, features = ["Win32", "Win32_System", "Win32_System_Threading"] }
 
 [build-dependencies]
-cc = { version = "1.2.38", optional = true, default-features = false }
+cmake = { version = "0.1.54", optional = true, default-features = false }
 
 [dev-dependencies]
 autd3 = { version = "36.0.1", features = ["async"] }
