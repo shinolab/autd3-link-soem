@@ -1,3 +1,13 @@
+// Copyright (c) 2022-2025 Shun Suzuki
+//
+// This file is part of autd3-link-soem.
+//
+// autd3-link-soem is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License.
+//
+// autd3-link-soem is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_crate_level_docs)]
@@ -9,9 +19,6 @@
 #[cfg(feature = "local")]
 /// Using SOEM on the local machine.
 pub mod local;
-#[cfg_attr(docsrs, doc(cfg(all(feature = "local", target_os = "windows"))))]
-#[cfg(all(feature = "local", target_os = "windows"))]
-pub use local::ProcessPriority;
 #[cfg_attr(docsrs, doc(cfg(feature = "local")))]
 #[cfg(feature = "local")]
 pub use local::{

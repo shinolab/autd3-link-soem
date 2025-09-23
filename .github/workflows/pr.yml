@@ -35,7 +35,6 @@ jobs:
         include:
           - os: windows-latest
           - os: ubuntu-latest
-          - os: macos-latest
           - os: ubuntu-latest
             features: "remote blocking"
     steps:

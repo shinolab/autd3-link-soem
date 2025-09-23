@@ -1,18 +1,18 @@
+// Copyright (c) 2022-2025 Shun Suzuki
+//
+// This file is part of autd3-link-soem.
+//
+// autd3-link-soem is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License.
+//
+// autd3-link-soem is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
 mod error;
-mod error_handler;
-mod ethernet_adapters;
-mod iomap;
+mod inner;
 mod link_soem;
-mod option;
-mod process_priority;
-mod smoothing;
-mod soem_bindings;
-mod state;
 
 pub use core_affinity::CoreId;
-pub use error_handler::Status;
-pub use ethernet_adapters::EthernetAdapters;
+pub use inner::{EthernetAdapters, SOEMOption, Status};
 pub use link_soem::SOEM;
-pub use option::SOEMOption;
-pub use process_priority::ProcessPriority;
 pub use thread_priority::{ThreadPriority, ThreadPriorityValue};
