@@ -12,15 +12,10 @@ fn main() {
     #[cfg(target_os = "windows")]
     {
         let home_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-        let target = std::env::var("TARGET").unwrap();
 
         println!("cargo:rustc-link-lib=winmm");
         println!("cargo:rustc-link-lib=ws2_32");
-        if target.contains("arm") || target.contains("aarch64") {
-            println!("cargo:rustc-link-search={home_dir}\\Lib\\ARM64");
-        } else {
-            println!("cargo:rustc-link-search={home_dir}\\Lib\\x64");
-        }
+        println!("cargo:rustc-link-search={home_dir}/3rdparty/SOEM/oshw/win32/wpcap/Lib/x64");
         println!("cargo:rustc-link-lib=wpcap");
     }
     #[cfg(target_os = "linux")]
