@@ -55,12 +55,12 @@ dependencies = ["cov-build", "cov-test", "cov-grcov", "cov-cleanup"]
 [tasks.cov-build]
 env = { RUSTFLAGS = "-Cinstrument-coverage", LLVM_PROFILE_FILE = "${CARGO_MAKE_WORKING_DIRECTORY}/%m-%p.profraw" }
 command = "cargo"
-args = ["build", "--features", "remote", "--features", "blocking"]
+args = ["build"]
 
 [tasks.cov-test]
 env = { RUSTFLAGS = "-Cinstrument-coverage", LLVM_PROFILE_FILE = "${CARGO_MAKE_WORKING_DIRECTORY}/%m-%p.profraw" }
 command = "cargo"
-args = ["test", "--features", "remote", "--features", "blocking"]
+args = ["test"]
 
 [tasks.cov-grcov]
 command = "grcov"
@@ -133,7 +133,7 @@ args = [
     "--rust-target",
     "1.90",
     "-o",
-    "src/local/inner/soem_bindings/win32.rs",
+    "src/inner/soem_bindings/win32.rs",
     "--",
     "-I3rdparty/SOEM/build/include",
     "-I3rdparty/SOEM/include",
@@ -153,7 +153,7 @@ args = [
     "--rust-target",
     "1.90",
     "-o",
-    "src/local/inner/soem_bindings/linux.rs",
+    "src/inner/soem_bindings/linux.rs",
     "--",
     "-I3rdparty/SOEM/build/include",
     "-I3rdparty/SOEM/include",

@@ -18,13 +18,13 @@ jobs:
         include:
           - os: windows-latest
           - os: ubuntu-latest
-          - os: ubuntu-latest
-            features: "remote blocking"
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
       - uses: ./.github/actions/setup-build
+        with:
+          components: "rustfmt, clippy"
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest

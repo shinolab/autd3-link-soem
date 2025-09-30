@@ -18,7 +18,7 @@ use std::{
     time::Duration,
 };
 
-use crate::local::error::SOEMError;
+use crate::error::SOEMError;
 
 use super::*;
 

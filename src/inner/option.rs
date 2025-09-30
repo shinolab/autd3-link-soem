@@ -14,11 +14,11 @@ use autd3_core::ethercat::EC_CYCLE_TIME_BASE;
 
 use thread_priority::ThreadPriority;
 
-use crate::local::error::SOEMError;
+use crate::error::SOEMError;
 
 /// A option for [`SOEM`].
 ///
-/// [`SOEM`]: crate::local::link_soem::SOEM
+/// [`SOEM`]: crate::link_soem::SOEM
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SOEMOption {
     /// The size of the send queue buffer. The default is 16.
@@ -82,7 +82,7 @@ impl SOEMOption {
         self.ifname.as_ref().map_or_else(
             || {
                 tracing::info!("No interface name is specified. Looking for AUTD device...");
-                let ifname = crate::local::inner::utils::lookup_autd()?;
+                let ifname = crate::inner::utils::lookup_autd()?;
                 tracing::info!("Found AUTD device on {:?}.", ifname);
                 Ok(ifname)
             },

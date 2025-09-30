@@ -15,20 +15,11 @@
 
 //! This crate provides a link to AUTD using [SOEM](https://github.com/OpenEtherCATsociety/SOEM).
 
-#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
-#[cfg(feature = "local")]
-/// Using SOEM on the local machine.
-pub mod local;
-#[cfg_attr(docsrs, doc(cfg(feature = "local")))]
-#[cfg(feature = "local")]
-pub use local::{
-    CoreId, EthernetAdapters, SOEM, SOEMOption, Status, ThreadPriority, ThreadPriorityValue,
-};
+mod error;
+mod inner;
+mod link_soem;
 
-#[cfg_attr(docsrs, doc(cfg(feature = "remote")))]
-#[cfg(feature = "remote")]
-/// Using SOEM on a remote machine.
-pub mod remote;
-#[cfg_attr(docsrs, doc(cfg(feature = "remote")))]
-#[cfg(feature = "remote")]
-pub use remote::RemoteSOEM;
+pub use core_affinity::CoreId;
+pub use inner::{EthernetAdapters, SOEMOption, Status};
+pub use link_soem::SOEM;
+pub use thread_priority::{ThreadPriority, ThreadPriorityValue};
