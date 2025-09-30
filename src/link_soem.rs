@@ -16,7 +16,7 @@ use autd3_core::{
     sleep::Sleep,
 };
 
-use crate::local::inner::{SOEMHandler, SOEMOption};
+use crate::inner::{SOEMHandler, SOEMOption};
 
 use super::Status;
 

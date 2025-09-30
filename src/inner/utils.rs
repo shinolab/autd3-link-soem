@@ -12,7 +12,7 @@ use std::ffi::{CStr, CString};
 
 use crate::{
     EthernetAdapters,
-    local::{
+    {
         error::SOEMError,
         inner::{Context, ec_slave},
     },

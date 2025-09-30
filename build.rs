@@ -1,4 +1,3 @@
-#[cfg(feature = "local")]
 fn main() {
     println!("cargo:rerun-if-changed=3rdparty/SOEM");
 
@@ -24,6 +23,3 @@ fn main() {
         println!("cargo:rustc-link-lib=rt");
     }
 }
-
-#[cfg(not(feature = "local"))]
-fn main() {}

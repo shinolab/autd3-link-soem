@@ -27,7 +27,7 @@ use autd3_core::{
     sleep::Sleep,
 };
 
-use crate::local::error::SOEMError;
+use crate::error::SOEMError;
 
 use super::{
     Context, State, Status, consts::*, iomap::IOMap, option::SOEMOption, smoothing::Smoothing,

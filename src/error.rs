@@ -13,7 +13,7 @@ use std::{ffi::CString, time::Duration};
 use autd3_core::link::LinkError;
 use thiserror::Error;
 
-use crate::local::inner::State;
+use crate::inner::State;
 
 #[derive(Error, Debug)]
 #[non_exhaustive]
