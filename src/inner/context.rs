@@ -44,10 +44,6 @@ impl Context {
         unsafe { self.as_mut_ptr().as_mut().unwrap() }
     }
 
-    pub fn num_devices(&self) -> usize {
-        self.ctx.slavecount as _
-    }
-
     pub fn init(&self, ifname: CString) -> Result<(), SOEMError> {
         if unsafe { ecx_init(self.as_mut_ptr(), ifname.as_ptr()) } > 0 {
             self.initialized.set(true);

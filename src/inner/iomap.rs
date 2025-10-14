@@ -13,8 +13,6 @@ use autd3_core::{
     link::{RxMessage, TxMessage},
 };
 
-use zerocopy::{FromBytes, IntoBytes};
-
 pub struct IOMap {
     buf: Vec<u8>,
     num_devices: usize,
@@ -38,33 +36,33 @@ impl IOMap {
     }
 
     pub fn input(&self) -> &[RxMessage] {
-        <[RxMessage]>::ref_from_bytes(
-            &self.buf[self.num_devices * EC_OUTPUT_FRAME_SIZE
-                ..(self.num_devices * EC_OUTPUT_FRAME_SIZE
-                    + self.num_devices * EC_INPUT_FRAME_SIZE)],
-        )
-        .unwrap()
+        unsafe {
+            std::slice::from_raw_parts(
+                self.buf[self.num_devices * EC_OUTPUT_FRAME_SIZE..].as_ptr() as *const RxMessage,
+                self.num_devices,
+            )
+        }
     }
 
     pub fn copy_from(&mut self, tx: &[TxMessage]) {
-        self.buf[0..tx.as_bytes().len()].copy_from_slice(tx.as_bytes());
-    }
-
-    pub fn clear(&mut self) {
-        self.buf.fill(0x00);
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                tx.as_ptr() as *const u8,
+                self.buf[0..].as_mut_ptr(),
+                std::mem::size_of_val(tx),
+            );
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use zerocopy::FromZeros;
-
     use super::*;
 
     #[test]
     fn test_iomap() {
         let mut iomap = IOMap::new(1);
-        let mut tx = vec![TxMessage::new_zeroed(); 1];
+        let mut tx = vec![TxMessage::new(); 1];
         let payload_size = tx[0].payload().len();
         tx[0].header.msg_id = autd3_core::link::MsgId::new(0x01);
         tx[0].header.slot_2_offset = 0x0302;

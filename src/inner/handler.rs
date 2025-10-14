@@ -8,6 +8,7 @@
 //
 // You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::mpsc::{Receiver, RecvError, SendError, SyncSender as Sender, sync_channel};
 use std::{
     sync::{
         Arc, Mutex,
@@ -17,21 +18,18 @@ use std::{
     time::Duration,
 };
 
-use crossbeam_channel::{Receiver, Sender, bounded};
 use time::ext::NumericalDuration;
-use zerocopy::FromZeros;
 
 use autd3_core::{
     geometry::Geometry,
     link::{RxMessage, TxMessage},
-    sleep::Sleep,
+    sleep::Sleeper,
 };
 
-use crate::error::SOEMError;
+use crate::{error::SOEMError, inner::option::SOEMOptionFull};
 
 use super::{
-    Context, State, Status, consts::*, iomap::IOMap, option::SOEMOption, smoothing::Smoothing,
-    utils::is_autd3,
+    Context, State, Status, consts::*, iomap::IOMap, smoothing::Smoothing, utils::is_autd3,
 };
 
 pub struct SOEMHandler {
@@ -47,10 +45,10 @@ pub struct SOEMHandler {
 impl SOEMHandler {
     pub(crate) fn open_with_sleeper<
         F: Fn(u16, Status) + Send + Sync + 'static,
-        S: Sleep + Send + 'static,
+        S: Sleeper + Send + 'static,
     >(
         err_handler: F,
-        option: SOEMOption,
+        option: SOEMOptionFull,
         geometry: &Geometry,
         sleeper: S,
     ) -> Result<Self, SOEMError> {
@@ -118,33 +116,45 @@ impl SOEMHandler {
 
         let state_check_interval = option.state_check_interval;
         let buf_size = option.buf_size.get();
-        let (send_queue_sender, send_queue_receiver) = bounded(buf_size);
-        let (buffer_queue_sender, buffer_queue_receiver) = bounded(buf_size);
+        let (send_queue_sender, send_queue_receiver) = sync_channel(buf_size);
+        let (buffer_queue_sender, buffer_queue_receiver) = sync_channel(buf_size);
         (0..buf_size).for_each(|_| {
             buffer_queue_sender
-                .send(vec![TxMessage::new_zeroed(); num_devices])
+                .send(vec![TxMessage::new(); num_devices])
                 .unwrap()
         });
-        let ecat_th = Some(std::thread::spawn({
-            let is_open = is_open.clone();
-            let io_map = io_map.clone();
-            let expected_wkc = ctx.expected_wkc();
-            let do_wkc_check = do_wkc_check.clone();
-            let ctx = ctx.clone();
-            move || {
-                ecat_run::<S>(
-                    ctx,
-                    is_open,
-                    io_map,
-                    expected_wkc,
-                    do_wkc_check,
-                    buffer_queue_sender,
-                    send_queue_receiver,
-                    sleeper,
-                    option,
-                )
-            }
-        }));
+        let ecat_th = Some({
+            option.thread_builder.spawn({
+                let is_open = is_open.clone();
+                let io_map = io_map.clone();
+                let expected_wkc = ctx.expected_wkc();
+                let do_wkc_check = do_wkc_check.clone();
+                let ctx = ctx.clone();
+                move |_| {
+                    if let Some(affinity) = option.affinity {
+                        tracing::info!(
+                            "Setting CPU affinity for the EtherCAT thread to {:?}",
+                            affinity
+                        );
+                        if !core_affinity::set_for_current(affinity) {
+                            tracing::error!("Failed to set CPU affinity for the EtherCAT thread.");
+                            return Err(SOEMError::AffinitySetFailed(affinity));
+                        }
+                    }
+                    ecat_run::<S>(
+                        ctx,
+                        is_open,
+                        io_map,
+                        expected_wkc,
+                        do_wkc_check,
+                        buffer_queue_sender,
+                        send_queue_receiver,
+                        sleeper,
+                        option.send_cycle,
+                    )
+                }
+            })?
+        });
 
         tracing::info!("Setting all slaves to operational state.");
         ctx.set_state(0, State::OPERATIONAL);
@@ -192,19 +202,11 @@ impl SOEMHandler {
         })
     }
 
-    pub fn num_devices(&self) -> usize {
-        self.ctx.num_devices()
-    }
-
     pub fn close(&mut self) {
         if !self.is_open.load(Ordering::Acquire) {
             return;
         }
         self.is_open.store(false, Ordering::Release);
-
-        while !self.send_queue.is_empty() {
-            std::thread::sleep(Duration::from_millis(100));
-        }
 
         if let Some(handle) = self.ecat_th.take() {
             let _ = handle.join();
@@ -219,14 +221,11 @@ impl SOEMHandler {
         self.is_open.load(Ordering::Acquire)
     }
 
-    pub fn alloc_tx_buffer(&mut self) -> Result<Vec<TxMessage>, crossbeam_channel::RecvError> {
+    pub fn alloc_tx_buffer(&mut self) -> Result<Vec<TxMessage>, RecvError> {
         self.buffer_queue.recv()
     }
 
-    pub fn send(
-        &mut self,
-        tx: Vec<TxMessage>,
-    ) -> Result<(), crossbeam_channel::SendError<Vec<TxMessage>>> {
+    pub fn send(&mut self, tx: Vec<TxMessage>) -> Result<(), SendError<Vec<TxMessage>>> {
         self.send_queue.send(tx)
     }
 
@@ -236,16 +235,6 @@ impl SOEMHandler {
     ) -> Result<(), std::sync::PoisonError<std::sync::MutexGuard<'_, IOMap>>> {
         let io_map = self.io_map.lock()?;
         rx.copy_from_slice(io_map.input());
-        Ok(())
-    }
-
-    pub fn clear_iomap(
-        &mut self,
-    ) -> Result<(), std::sync::PoisonError<std::sync::MutexGuard<'_, IOMap>>> {
-        while !self.send_queue.is_empty() {
-            std::thread::sleep(Duration::from_millis(100));
-        }
-        self.io_map.lock()?.clear();
         Ok(())
     }
 }
@@ -258,7 +247,7 @@ fn wait_for_sync(
 ) -> Result<(), SOEMError> {
     tracing::info!("Waiting for synchronization.");
     let max_diff = std::thread::scope(|s| {
-        let (tx, rx) = bounded(1);
+        let (tx, rx) = sync_channel(1);
         let th = s.spawn(move || {
             let mut data = 0u64;
             loop {
@@ -344,7 +333,7 @@ fn wait_for_sync(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn ecat_run<S: Sleep>(
+fn ecat_run<S: Sleeper>(
     ctx: Arc<Context>,
     is_open: Arc<AtomicBool>,
     io_map: Arc<Mutex<IOMap>>,
@@ -353,23 +342,9 @@ fn ecat_run<S: Sleep>(
     buffer_queue_sender: Sender<Vec<TxMessage>>,
     receiver: Receiver<Vec<TxMessage>>,
     sleeper: S,
-    option: SOEMOption,
+    cycle: Duration,
 ) -> Result<(), SOEMError> {
-    let cycle = option.send_cycle;
     tracing::info!("Starting EtherCAT thread with cycle time {:?}.", cycle);
-
-    if let Some(affinity) = option.affinity {
-        tracing::info!(
-            "Setting CPU affinity for the EtherCAT thread to {:?}",
-            affinity
-        );
-        if !core_affinity::set_for_current(affinity) {
-            tracing::error!("Failed to set CPU affinity for the EtherCAT thread.");
-            return Err(SOEMError::AffinitySetFailed(affinity));
-        }
-    }
-
-    option.thread_priority.set_for_current()?;
 
     let mut cnt_miss_deadline = 0;
     let mut toff = time::Duration::ZERO;
