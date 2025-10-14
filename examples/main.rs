@@ -1,5 +1,5 @@
 use autd3::prelude::*;
-use autd3_link_soem::{SOEM, Status};
+use autd3_link_soem::{SOEM, SOEMOption, Status};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     std::process::exit(-1);
                 }
             },
-            Default::default(),
+            SOEMOption::default(),
         ),
     )?;
 

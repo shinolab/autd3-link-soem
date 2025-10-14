@@ -22,7 +22,7 @@ mod utils;
 pub use context::*;
 pub use ethernet_adapters::EthernetAdapters;
 pub use handler::SOEMHandler;
-pub use option::SOEMOption;
+pub use option::{SOEMOption, SOEMOptionFull};
 pub use soem_bindings::*;
 pub use state::State;
 pub use status::Status;

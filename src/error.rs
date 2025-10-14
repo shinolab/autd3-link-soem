@@ -11,35 +11,97 @@
 use std::{ffi::CString, time::Duration};
 
 use autd3_core::link::LinkError;
-use thiserror::Error;
 
 use crate::inner::State;
 
-#[derive(Error, Debug)]
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum SOEMError {
-    #[error("Cycle({0:?}) must be a multiple of 500μs and not 0")]
     InvalidCycle(Duration),
-    #[error("No AUTD device was found")]
     NoDeviceFound,
-    #[error("No socket connection on {0:?}")]
     NoSocketConnection(CString),
-    #[error("The number of slaves you specified is {1}, but {0} devices are found")]
     SlaveNotFound(u16, u16),
-    #[error("One ore more slaves are not responding")]
     NotResponding,
-    #[error("One ore more slaves did not reach required state (expected: {0}, actual: {1})")]
     NotReachedRequiredState(State, State),
-    #[error("Invalid interface name: {0}")]
     InvalidInterfaceName(String),
-    #[error(
-        "Failed to synchronize devices. Maximum system time difference ({0:?}) exceeded the tolerance ({1:?})"
-    )]
     SynchronizeFailed(Duration, Duration),
-    #[error("{0}")]
-    ThreadPriorityError(#[from] thread_priority::Error),
-    #[error("Failed to set CPU affinity for the EtherCAT thread: {0:?}")]
+    ThreadPriorityError(thread_priority::Error),
     AffinitySetFailed(core_affinity::CoreId),
+    Io(std::io::Error),
+}
+
+impl std::fmt::Display for SOEMError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SOEMError::InvalidCycle(duration) => {
+                write!(
+                    f,
+                    "Cycle({:?}) must be a multiple of 500μs and not 0",
+                    duration
+                )
+            }
+            SOEMError::NoDeviceFound => write!(f, "No AUTD device was found"),
+            SOEMError::NoSocketConnection(name) => {
+                write!(f, "No socket connection on {:?}", name)
+            }
+            SOEMError::SlaveNotFound(found, expected) => {
+                write!(
+                    f,
+                    "The number of slaves you specified is {}, but {} devices are found",
+                    expected, found
+                )
+            }
+            SOEMError::NotResponding => write!(f, "One ore more slaves are not responding"),
+            SOEMError::NotReachedRequiredState(expected, actual) => {
+                write!(
+                    f,
+                    "One ore more slaves did not reach required state (expected: {}, actual: {})",
+                    expected, actual
+                )
+            }
+            SOEMError::InvalidInterfaceName(name) => {
+                write!(f, "Invalid interface name: {}", name)
+            }
+            SOEMError::SynchronizeFailed(max_diff, tolerance) => {
+                write!(
+                    f,
+                    "Failed to synchronize devices. Maximum system time difference ({:?}) exceeded the tolerance ({:?})",
+                    max_diff, tolerance
+                )
+            }
+            SOEMError::ThreadPriorityError(err) => write!(f, "{}", err),
+            SOEMError::AffinitySetFailed(core_id) => {
+                write!(
+                    f,
+                    "Failed to set CPU affinity for the EtherCAT thread: {:?}",
+                    core_id
+                )
+            }
+            SOEMError::Io(err) => write!(f, "{}", err),
+        }
+    }
+}
+
+impl std::error::Error for SOEMError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            SOEMError::ThreadPriorityError(err) => Some(err),
+            SOEMError::Io(err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
+impl From<thread_priority::Error> for SOEMError {
+    fn from(err: thread_priority::Error) -> Self {
+        SOEMError::ThreadPriorityError(err)
+    }
+}
+
+impl From<std::io::Error> for SOEMError {
+    fn from(err: std::io::Error) -> Self {
+        SOEMError::Io(err)
+    }
 }
 
 impl From<SOEMError> for LinkError {

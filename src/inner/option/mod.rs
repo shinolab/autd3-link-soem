@@ -8,18 +8,8 @@
 //
 // You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg_attr(docsrs, feature(doc_cfg))]
-#![warn(missing_docs)]
-#![warn(rustdoc::missing_crate_level_docs)]
-#![warn(rustdoc::unescaped_backticks)]
+mod full;
+mod simple;
 
-//! This crate provides a link to AUTD using [SOEM](https://github.com/OpenEtherCATsociety/SOEM).
-
-mod error;
-mod inner;
-mod link_soem;
-
-pub use core_affinity;
-pub use inner::{EthernetAdapters, SOEMOption, SOEMOptionFull, Status};
-pub use link_soem::SOEM;
-pub use thread_priority;
+pub use full::SOEMOptionFull;
+pub use simple::SOEMOption;
