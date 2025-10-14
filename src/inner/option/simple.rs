@@ -53,11 +53,22 @@ impl From<SOEMOption> for SOEMOptionFull {
             state_check_interval: value.state_check_interval,
             sync0_cycle: value.sync0_cycle,
             send_cycle: value.sync0_cycle,
+            #[cfg(target_os = "windows")]
             thread_builder: ThreadBuilder::default().name("tx-rx-thread").priority(
                 ThreadPriority::Os(thread_priority::ThreadPriorityOsValue::from(
                     thread_priority::WinAPIThreadPriority::TimeCritical,
                 )),
             ),
+            #[cfg(not(target_os = "windows"))]
+            thread_builder: ThreadBuilder::default()
+                .name("tx-rx-thread")
+                .priority(
+                    thread_priority::ThreadPriorityValue::try_from(99)
+                        .map_or_else(|_| ThreadPriority::Max, ThreadPriority::Crossplatform),
+                )
+                .policy(thread_priority::ThreadSchedulePolicy::Realtime(
+                    thread_priority::RealtimeThreadSchedulePolicy::Fifo,
+                )),
             sync_tolerance: value.sync_tolerance,
             sync_timeout: value.sync_timeout,
             affinity: None,
