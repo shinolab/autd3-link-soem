@@ -12,7 +12,7 @@ use spin_sleep::SpinSleeper as _SpinSleeper;
 
 use autd3_core::{
     geometry::Geometry,
-    link::{Link, LinkError, RxMessage, TxMessage},
+    link::{AsyncLink, Link, LinkError, RxMessage, TxMessage},
     sleep::Sleeper,
 };
 
@@ -107,4 +107,9 @@ impl<F: Fn(u16, Status) + Send + Sync + 'static, S: Sleeper + Send + 'static> Li
     fn is_open(&self) -> bool {
         self.handler.as_ref().is_some_and(|inner| inner.is_open())
     }
+}
+
+impl<F: Fn(u16, Status) + Send + Sync + 'static, S: Sleeper + Send + 'static> AsyncLink
+    for SOEM<F, S>
+{
 }
