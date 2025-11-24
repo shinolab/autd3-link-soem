@@ -15,7 +15,7 @@ jobs:
     outputs:
       src: ${{ steps.changed-files-yaml.outputs.src_any_changed }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - id: changed-files-yaml
         uses: tj-actions/changed-files@v47
         with:
@@ -36,7 +36,7 @@ jobs:
           - os: windows-latest
           - os: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - uses: ./.github/actions/setup-build
@@ -62,7 +62,7 @@ jobs:
     name: build-docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - uses: ./.github/actions/setup-build
