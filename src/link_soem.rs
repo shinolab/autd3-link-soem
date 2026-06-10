@@ -112,4 +112,35 @@ impl<F: Fn(u16, Status) + Send + Sync + 'static, S: Sleeper + Send + 'static> Li
 impl<F: Fn(u16, Status) + Send + Sync + 'static, S: Sleeper + Send + 'static> AsyncLink
     for SOEM<F, S>
 {
+    async fn open(&mut self, geometry: &Geometry) -> Result<(), LinkError> {
+        <Self as Link>::open(self, geometry)
+    }
+
+    async fn close(&mut self) -> Result<(), LinkError> {
+        <Self as Link>::close(self)
+    }
+
+    async fn update(&mut self, _: &Geometry) -> Result<(), LinkError> {
+        Ok(())
+    }
+
+    async fn alloc_tx_buffer(&mut self) -> Result<Vec<TxMessage>, LinkError> {
+        <Self as Link>::alloc_tx_buffer(self)
+    }
+
+    async fn send(&mut self, tx: Vec<TxMessage>) -> Result<(), LinkError> {
+        <Self as Link>::send(self, tx)
+    }
+
+    async fn receive(&mut self, rx: &mut [RxMessage]) -> Result<(), LinkError> {
+        <Self as Link>::receive(self, rx)
+    }
+
+    fn is_open(&self) -> bool {
+        <Self as Link>::is_open(self)
+    }
+
+    fn ensure_is_open(&self) -> Result<(), LinkError> {
+        <Self as Link>::ensure_is_open(self)
+    }
 }
